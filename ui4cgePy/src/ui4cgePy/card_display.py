@@ -23,7 +23,7 @@ CARD_HEIGHT = int(CARD_WIDTH*1.3)
 #-----------------------
 
 
-class GameDSP(Game):
+class GameDISP(Game):
 	
 	def __init__(self,general_params,game_params):
 		Game.__init__(self,general_params,game_params)
@@ -110,12 +110,12 @@ class GameDSP(Game):
 		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.waste, self.board.waste.deckType))
 	
 
-class GameFactoryDSP(GameFactory):
+class GameFactoryDISP(GameFactory):
 	
 	def getGame(self):
-		return GameDSP(self.general_params,self.game_params)
+		return GameDISP(self.general_params,self.game_params)
 
-class AIFactoryDSP():
+class AIFactoryDISP():
 	def getAI(self,num):
 		return AI("rien",0) if num != 0 else None
 
@@ -124,8 +124,8 @@ def debug_display_cards(loadCards):
 	general_params=loadParams("general_params.json")
 	#basePath = os.path.dirname(__file__)
 	#print(basePath + "DSP")
-	general_params["fic_config" ] = "DSP"
-	general_params["fic_interface" ] = "DSP"
+	general_params["fic_config" ] = "DISP"
+	general_params["fic_interface" ] = "DISP"
 	general_params["multi_fic_config"] = False
 	game_params=loadParams(general_params["game_params"])
 	game_params["player1"] = {"name": "Player", "ai":0}
@@ -137,7 +137,7 @@ def debug_display_cards(loadCards):
 	#GameWindowTK.display(general_params,game_params,GameManagerFactory(GameFactoryDSP(general_params,game_params),AIFactoryDSP(),loadCards))
 
 	gameSceneFactoryList=[]
-	gameSceneFactoryList.append(GameLogicFactory(GameManagerFactory(GameFactoryDSP(general_params,game_params),AIFactoryDSP(),loadCards)))
+	gameSceneFactoryList.append(GameLogicFactory(GameManagerFactory(GameFactoryDISP(general_params,game_params),AIFactoryDISP(),loadCards)))
 
 	GameWindowTK.display(general_params,game_params,gameSceneFactoryList,SimpleTransitionManager())
 
