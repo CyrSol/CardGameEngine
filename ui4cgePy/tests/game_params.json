@@ -1,0 +1,19 @@
+{
+"nb_max_players": 1,
+"nb_players": 1,
+"nb_ai_players": 5, 
+"nb_min_players" : 1,
+"score":14,
+"player1": {"name": "Squall", "ai":2}, 
+"player2": {"name": "Wedge", "ai":2},  
+"player3": {"name": "Biggs", "ai":2},
+"player4": {"name": "Cid", "ai":2},
+"player5": {"name": "Hilda", "ai":2},
+"player6": {"name": "Puce", "ai":2},
+
+"nb_games" : 1000,
+"benchmarkAI": false,
+"fullAI": false,
+"nb_generations_algo": 10,
+"nb_individus_algo": 15
+}

@@ -1,5 +1,5 @@
 import random
-from cards.card_game import *
+from .card_game import *
 from operator import itemgetter
 
 

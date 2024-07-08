@@ -1,7 +1,7 @@
 import pygame
 
-from cards.card_game import *
-from cards.card_AI import *
+from .card_game import *
+from .card_AI import *
 
 # Define the colors:
 #----------------------
@@ -826,7 +826,7 @@ class GameMenuNbPlayers(GameScene):
 				#print(event.dict)
 				if(dic["type_event"] == "input") :
 					print("Value : " + str(dic["value"]))
-					print("Value : " + int(dic["value"][0]))
+					print("Value : " + str(dic["value"][0]))
 					self.game_params["nb_players"]=int(dic["value"][0])
 					self.state = GameScene.OVER
 					return 

@@ -2,8 +2,8 @@ import random
 import copy
 import json, os, sys
 import datetime
-sys.path.append("..")
-from cards.card_stats import *
+
+from .card_stats import *
 
 
 class Card(object):

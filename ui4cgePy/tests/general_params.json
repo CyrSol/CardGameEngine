@@ -1,0 +1,21 @@
+{
+"game_params": "game_params.json",
+"title" : "Card Demo",
+"screen_width": 1000,
+"screen_height" : 800,
+"card_width" : 120,
+"card_height" : 160,
+"cards" : "CRD_cards.csv",
+"cards_dict" : "CRD_cards_dict.csv",
+"background" : "background/tapis.jpg",
+"fic_config" : "CRD",
+"extension_fic_config" : ".ccfg",
+"fic_interface" : "CRD",
+"extension_fic_interface" : ".icfg",
+"multi_fic_config" : false,
+"log_file": "log/players/ficCRDAI",
+"log_file_benchmark": "log/ficCRDAI_Benchmark",
+"back_name":"playing_cards/back.png",	
+"debug_display":1
+}
+
