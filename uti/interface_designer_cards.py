@@ -35,6 +35,10 @@ class FakeDeck:
 
             rect = pygame.Rect(x, y, self.r.width, self.r.height)
             pygame.draw.rect(screen, c, rect)
+            rect = pygame.Rect(width/2, 0, 2, height)
+            pygame.draw.rect(screen, (0, 0, 0), rect)
+            rect = pygame.Rect(0, height/2, width, 2)
+            pygame.draw.rect(screen, (0, 0, 0), rect)
             pygame.display.update(rect)
 
     def to_string(self):
@@ -181,11 +185,29 @@ change = False
 # Boucle principale
 def mainloop():
     global change, selected_deck, b_unselect, b_delete, b_save, b_load, deck_list
-
+    moved = False
+    m_x = 0
+    m_y = 0
     for event in pygame.event.get():
+
         if event.type == pygame.QUIT:
             root.quit()
             return
+        elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE: unselect()
+                elif event.key == pygame.K_x: delete()
+                elif event.key == pygame.K_DOWN: 
+                    moved = True
+                    m_y = 1 
+                elif event.key == pygame.K_UP: 
+                    moved = True
+                    m_y = -1 
+                elif event.key == pygame.K_RIGHT: 
+                    moved = True
+                    m_x = 1 
+                elif event.key == pygame.K_LEFT: 
+                    moved = True
+                    m_x = -1 
         elif event.type == pygame.MOUSEBUTTONUP:
             pos = pygame.mouse.get_pos()
             current_deck = None
@@ -241,6 +263,11 @@ def mainloop():
         b_load = False
         change = True
 
+    if(moved and selected_deck is not None):
+            if(m_x != 0 or m_y != 0):
+                selected_deck.r.y = selected_deck.r.y + m_y
+                selected_deck.r.x = selected_deck.r.x + m_x
+                change = True
     if change:
         if img:
             screen.blit(picture, [0, 0])
