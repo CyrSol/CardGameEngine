@@ -97,7 +97,7 @@ def load_file(file_name):
             decks.append(d)
     return decks
 
-general_params = loadParams("general_params.json")
+general_params = loadParams("config/general_params.json")
 
 # Initialisation de pygame
 pygame.init()
@@ -152,7 +152,7 @@ checkbox_hollow.pack(pady=5)
 slider_nb_max = tk.Scale(menu_frame, label="Nombre Max", from_=1, to=20, orient='horizontal')
 slider_nb_max.pack(pady=5)
 entry_name = tk.Entry(menu_frame)
-entry_name.insert(0, general_params["fic_config"])
+entry_name.insert(0, general_params["fic"])
 entry_name.pack(pady=5)
 entry_num = tk.Entry(menu_frame)
 entry_num.insert(0, "")
@@ -255,11 +255,11 @@ def mainloop():
         b_delete = False
 
     if b_save:
-        save_file(entry_name.get() + entry_num.get() + general_params["extension_fic_config"], deck_list)
+        save_file(general_params["fic_config_folder"] + entry_name.get() + entry_num.get() + general_params["extension_fic_config"], deck_list)
         b_save = False
 
     if b_load:
-        deck_list = load_file(entry_name.get() + entry_num.get() +  general_params["extension_fic_config"])
+        deck_list = load_file(general_params["fic_config_folder"] + entry_name.get() + entry_num.get() +  general_params["extension_fic_config"])
         b_load = False
         change = True
 

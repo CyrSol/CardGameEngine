@@ -137,9 +137,9 @@ def loadCards(file_name):
 	
 	for line in fic :
 		val = line.rstrip('\n').split(",")
-		if len(val) ==  5:
+		if len(val) ==  5 and val[0][0] != "#":
 			name = val[0]
-			#print(name+" -> "+nameFic)
+			#(name+" -> "+nameFic)
 			card = Card(name,val[1],val[2],int(val[3]),val[4])
 			cards.append(card)
 			
@@ -229,7 +229,7 @@ class GameManager(object):
 		self.eventManager=eventManager
 		self.aiManager=aiManager
 		self.chronoGame = ChronoPy(reflexionTime)
-		self.chronoAI = ChronoPy(reflexionTime)
+		self.chronoAI = ChronoPy(1000)
 		self.debug_mode = False
 		self.previousState=None
 		self.firstState=None
@@ -278,6 +278,7 @@ class GameManager(object):
 
 			if ret == GameManager.MOUSE_CLICK: 
 				pos = dic["pos"]
+				#print(pos)
 				if(dic["button"] == 1 ):
 					self.game.sendMessage(self.interfaceManager.input(pos[0],pos[1],self.eventManager.name))
 				elif(dic["button"] == 3 ):
@@ -488,7 +489,7 @@ class GameManagerFactory():
 		cards  = self.loadCards(general_params["cards"])
 		cards_ref = loadCardsRef(cards)
 
-		reflexionTime = 1000
+		reflexionTime = 10
 
 		# Interface
 		interfaceManager = InterfaceManager()
@@ -710,12 +711,12 @@ class GameLogicFactory:
 		cpl = ""
 		if general_params["multi_fic_config"]:
 			cpl = str(game_params["nb_players"])
-		ccfgPath = os.path.join(general_params["fic_config"]+cpl+general_params["extension_fic_config"])
+		ccfgPath = os.path.join(general_params["fic_config_folder"] + general_params["fic"]+cpl+general_params["extension_fic_config"])
 		fic = open(ccfgPath,'r')
 		interfaceLines =interfaceLineFromFile(fic)
 		fic.close()
 
-		ccfgPath = os.path.join(general_params["fic_interface"]+cpl+general_params["extension_fic_interface"])
+		ccfgPath = os.path.join(general_params["fic_interface_folder"] + general_params["fic"]+cpl+general_params["extension_fic_interface"])
 		fic = open(ccfgPath,'r')
 		uiElements = uiElementFromFile(fic)
 		fic.close()
