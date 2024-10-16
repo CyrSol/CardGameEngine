@@ -185,7 +185,7 @@ def load_file_uie(file_name):
    fic.close
    return decks
 
-general_params = loadParams("general_params.json")
+general_params = loadParams("config/general_params.json")
 game_params = loadParams(general_params["game_params"])
 pygame.init()
 pygame.key.set_repeat(300, 30)
@@ -216,7 +216,7 @@ menu_frame.pack_propagate(False)
 menu_frame.pack(side=tk.RIGHT, fill=tk.Y)
 
 fileName = tk.Entry(menu_frame)
-fileName.insert(0, general_params["fic_interface"])
+fileName.insert(0, general_params["fic"])
 fileName.pack(pady=5)
 nbPlayers = tk.Entry(menu_frame)
 nbPlayers.insert(0, str(game_params["nb_players"]))
@@ -274,8 +274,8 @@ pygame.display.init()
 nbPlayersText = ""
 if general_params["multi_fic_config"]:
     nbPlayersText = nbPlayers.get()
-deck_liste = load_file(fileName.get()+nbPlayersText+general_params["extension_fic_config"])
-uie_liste = load_file_uie(fileName.get()+nbPlayersText+general_params["extension_fic_interface"])
+deck_liste = load_file(general_params["fic_config_folder"]+fileName.get()+nbPlayersText+general_params["extension_fic_config"])
+uie_liste = load_file_uie(general_params["fic_interface_folder"]+fileName.get()+nbPlayersText+general_params["extension_fic_interface"])
 
 def getUIElement(x, y):
     var = e_counter_var.get()
@@ -382,12 +382,12 @@ def mainloop():
             change = True
         if(b_save):
             b_save = False
-            save_file(fileName.get()+nbPlayersText+general_params["extension_fic_interface"], uie_liste)
-            save_file(fileName.get()+nbPlayersText+general_params["extension_fic_config"], deck_liste)
+            save_file(general_params["fic_interface_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_interface"], uie_liste)
+            save_file(general_params["fic_config_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_config"], deck_liste)
         if(b_load):
             b_load = False
-            deck_liste = load_file(fileName.get()+nbPlayersText+general_params["extension_fic_config"])
-            uie_liste = load_file_uie(fileName.get()+nbPlayersText+general_params["extension_fic_interface"])
+            deck_liste = load_file(general_params["fic_interface_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_config"])
+            uie_liste = load_file_uie(general_params["fic_config_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_interface"])
             selected_uie = None
             change = True
         if(moved and selected_uie is not None):

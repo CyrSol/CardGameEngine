@@ -87,7 +87,7 @@ class FormTk(object):
       
      
       #print("update")
-      self.root.after(100, self.update)
+      self.root.after(10, self.update)
 
     def initialisation(self,title,width,height,eventManagerTkform):
         self.eventManagerTkform = eventManagerTkform

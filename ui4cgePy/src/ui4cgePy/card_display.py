@@ -121,7 +121,7 @@ class AIFactoryDISP():
 
 def debug_display_cards(loadCards):
 	
-	general_params=loadParams("general_params.json")
+	general_params=loadParams("config/general_params.json")
 	#basePath = os.path.dirname(__file__)
 	#print(basePath + "DSP")
 	general_params["fic_config" ] = "DISP"

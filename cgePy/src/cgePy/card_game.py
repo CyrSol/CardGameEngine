@@ -470,6 +470,7 @@ class Game(object) :
 			self.uiVars["P"+str(i)+"nature"]=self.players[i].nature
 			self.uiVars["P"+str(i)+"name"]=self.players[i].name
 			self.uiVars["P"+str(i)+"tag"]=self.players[i].tag
+			self.uiVars["P"+str(i)+"nb_cards"]=str(self.players[i].getNbCards())
 			sum_auction= sum_auction + self.players[i].auction
 		self.uiVars["sum_auction"] = str(sum_auction)	
 
