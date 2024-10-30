@@ -29,9 +29,9 @@ class EventManagerTKform(object):
         event=pygame.event.Event(pygame.USEREVENT,{"value":value , "key" : key, "type_event" : "param"})
         self.listeEvents.append(event)
 
-    def game_input(self,value):
+    def game_input(self,value,key, typeParam):
         #print(value)
-        event=pygame.event.Event(pygame.USEREVENT,{"value":value , "type_event" : "input"})
+        event=pygame.event.Event(pygame.USEREVENT,{"value":value , "type_event" : "input", "key":key, "typeParam":typeParam})
         #event=pygame.event.Event(1024,code="make")
         #print(event)
         self.listeEvents.append(event)
@@ -73,9 +73,9 @@ class FormTk(object):
       if self.gameLoop is not None : 
           for dic in self.gameLoop.getOutputMessages():
            #print(dic)
-           ret = self.popup(dic)
+           ret, key, typeParam = self.popup(dic)
            #print(ret)
-           self.eventManagerTkform.game_input(ret)
+           self.eventManagerTkform.game_input(ret,key,typeParam)
           for event in self.eventManagerTkform.listeEvents:
              #print(event)
              pygame.event.post(event)
@@ -148,30 +148,43 @@ class FormTk(object):
         print(dic)
         fInfos = tk.Toplevel()		  # Popup -> Toplevel()
         fInfos.title(dic["title"])
-        fInfos.geometry('500x90')
+        nb = 0
+        maxValue = 5
+        keys=[]
+        typeParam=[]
+        for key, values in dic["values"].items():
+        	keys.append(key)
+        	typeParam.append(values["type"])
+        	nb= nb + 1
+        	for k,v in values["value"].items() :
+        		if maxValue < len(str(v)) :
+        			maxValue = len(str(v)) 
+        print("size : " + str(maxValue))
+        
+        h = 500
+        l = 130 + 90*(nb-1)
+        fInfos.geometry(str(h)+'x'+str(l))
         tk.Label(fInfos, text=dic["text"]).pack(padx=10, pady=10)
         widgetsList = []
         i=0
         #print(dic["value"])
-        maxValue = 5
-        for key, value in dic["value"].items():
-        	for v in value :
-        		if maxValue < len(str(v)) :
-        			maxValue = len(str(v)) 
-        print("size : " + str(maxValue))
+        
+	# TODO gestion du text
+        
         		
-        for key, value in dic["value"].items():
-              widgetsList.append(self.widget(fInfos,value,i,maxValue))
-              i=i+1
+        for key, value in dic["values"].items() :
+              for k,v in values["value"].items() :
+                   tk.Label(fInfos, text=value["text"]).pack(padx=5, pady=5)
+                   widgetsList.append(self.widget(fInfos,v,i,maxValue))
 
-        tk.Button(fInfos, text='OK', command=fInfos.destroy).pack(padx=5, pady=5)
+        tk.Button(fInfos, text='OK', command=fInfos.destroy).pack(padx=2, pady=2)
         fInfos.transient(self.root) 	  # Réduction popup impossible 
         fInfos.grab_set()		  # Interaction avec fenetre jeu impossible
         self.root.wait_window(fInfos)   # Arrêt script principal
         ret = []
         for w in widgetsList:
             ret.append(self.vars[w.tag].get())
-        return ret
+        return ret, keys, typeParam
 
     def widget(self, window,values, tag, maxValue):
         self.vars.append(tk.StringVar())

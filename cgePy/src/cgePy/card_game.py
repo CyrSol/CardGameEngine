@@ -81,6 +81,7 @@ class Deck(object) :
 		self.deckType = deckType
 		self.cardsOwned = {}
 		self.cardsPlayable = []
+		self.sortable = True
 		
 
 	def shuffle(self):
@@ -128,10 +129,21 @@ class Deck(object) :
 		return len(self.cards)
 
 	def sort(self,reverse=False):
-		self.cards.sort(key = getCardValueSort, reverse = reverse)  
+		if self.sortable :
+			self.cards.sort(key = getCardValueSort, reverse = reverse)  
 
 	def getValue(self):
 		return sum(map(lambda x: x.value, self.cards))
+		
+	
+	def empty(self):
+		self.cards = []
+		
+	
+	def getState(self):
+		dict={}
+		dict[self.name + "_cards"] = [c.name for c in self.cards]
+		return dict;
 
 class Player(Deck) :
 	
@@ -176,6 +188,52 @@ class AI(object):
 	def play(self,game,player):
 		return MessageDeck(Message.GAME,Deck.STOCK,player.name,"stock",0)
 
+class AIInput(AI):
+	def __init__(self,level,nature):
+		AI.__init__(self,level,nature)
+		self.input = []
+		self.output = {}
+		self.expected = []
+		self.counter = 0
+		self.last_iteration = -1
+		self.unit_testing = True
+		self.last_move = ""
+		self.test_unit_errors = 0
+	
+	def getCurrentState(self,game,player):
+		return ""
+		
+	def play(self,game,player):
+		self.unit_testing = "unit_test" in game.general_params and game.general_params["unit_test"]
+		if (self.input == [] and self.counter == 0 and self.unit_testing):
+			if self.unit_testing :
+				self.input = loadInputFile(game.general_params["unit_test_input_file"])
+				self.expected = loadInputFile(game.general_params["unit_test_expected_file"])
+				self.output = {"start_date" : str(datetime.datetime.now())}
+		
+		if self.last_iteration != self.counter and self.unit_testing:
+				states = self.getCurrentState(game,player)
+				output = {"last move" : self.last_move }
+				test_result = True
+				expected = self.expected[self.counter].split(";")
+				for k in range(0,len(states)) :
+					result = expected[k] == states[k]
+					output.update({"deck_" + str(k) : { "state" : states[k], "expected_state" : expected[k], "result" : result}})
+					test_result = test_result and result
+				output.update({"test_result" : test_result})
+				self.output.update({"test"+str(self.counter+1) : output})
+					
+				if not result :
+					game.sendMessage(Message(Message.DEBUG,0,"game","test"+str(self.counter) + " en erreur"))
+				saveParams(game.general_params["unit_test_output_file"],self.output)
+				self.last_iteration = self.counter
+		
+		if(len(self.input) > 0) :
+				item = self.input.pop(0).split(",")
+				self.last_move = item
+				self.counter = self.counter + 1
+				return MessageDeck(Message.GAME,int(item[0]),player.name,item[1],int(item[2]))
+			
 class AIManager(object):
 		def __init__(self):
 			self.players=[]
@@ -200,6 +258,7 @@ class Board(object) :
 	def __init__(self):
 		self.stock = Deck("stock",Deck.STOCK)
 		self.waste = Deck("waste",Deck.WASTE)
+		self.deck = Deck("deck",Deck.BOARD)
 		self.stock_init = Deck("stock_init",Deck.STOCK)
 		self.info = ""
 		self.cards_ref = {}
@@ -244,6 +303,11 @@ class Board(object) :
 	
 	def setInfo(self, str):
 		self.info = str
+	
+	def fillDeck(self,nb):
+		self.deck.empty()
+		for i in range(0,nb):
+			self.deck.addBack(emptyCard())
 	
 	
 class Message():
@@ -312,6 +376,7 @@ class Game(object) :
 	REFLECTION=12
 	REACTION=13
 	PREPARATION=14
+	FINALISATION=16
 
 	def __init__(self,general_params,game_params):
 		self.board = Board()
@@ -320,6 +385,7 @@ class Game(object) :
 		self.decks = []
 		self.decks.append(self.board.stock)
 		self.decks.append(self.board.waste)
+		self.decks.append(self.board.deck)
 		#self.game_over = False
 		self.changed = False
 		self.state=0
@@ -338,8 +404,9 @@ class Game(object) :
 		self.nameFicStats=""
 		#self.loadGameParams()
 		self.uiVars= {}
-		self.rules =[]
-		
+		self.rules = game_params["rules"]
+		self.active_players_index = []
+		self.counter = 0
 
 	def start(self):
 		print("GO!")
@@ -369,7 +436,16 @@ class Game(object) :
 		self.decks.append(player)
 	
 	def sendMessage(self,message):
-		self.messages.append(message)
+		if message is not None:
+			if message.level == Message.DEBUG:
+				self.debug = message.text
+				if("debug" in self.general_params and self.general_params["debug"] == True):
+					print(message.playerName + ": " + message.text)
+			elif message.level == Message.INFO:
+				for i in self.active_players_index:
+					self.players[i].sendMessage(message)
+			else :
+				self.messages.append(message)
 		
 	def addOutputMessage(self,message):
 		self.output_messages.append(message)
@@ -410,7 +486,7 @@ class Game(object) :
 				player.handled.remove(c)
 				
 		#print (message.playerName + " -> " + message.deckName+ " -> " + str(message.index))
-		if (message.messageType == Deck.SORT) and player == deck :
+		if (message.messageType == Deck.SORT) and player == deck and player.sortable:
 			#print(card.getInfo())
 			if card in player.handled or len(player.handled) == 0 :
 				card.handle=not card.handle
@@ -459,6 +535,7 @@ class Game(object) :
 		self.uiVars["info"]= self.players[0].messages[-1].text if len(self.players[0].messages) >= 1 else ""
 		self.uiVars["debug"]= self.debug
 		self.uiVars["nb_players"]= self.game_params["nb_players"] 
+		self.uiVars["counter"]= self.counter
 		
 		sum_auction = 0
 		for i in range(0,len(self.players)):
@@ -473,6 +550,20 @@ class Game(object) :
 			self.uiVars["P"+str(i)+"nb_cards"]=str(self.players[i].getNbCards())
 			sum_auction= sum_auction + self.players[i].auction
 		self.uiVars["sum_auction"] = str(sum_auction)	
+	
+	def awaitEverybody(self):
+		for pl in self.players:
+			self.awaited.append(pl.name)
+			
+	def awaitEveryActive(self):
+		for i in self.active_players_index:
+			self.awaited.append(self.players[i].name)
+	
+	def getState(self):
+		dict = {}
+		for d in self.decks:
+			dict.update(d.getState())
+		return dict
 
 class GameFactory():
 	def __init__(self,general_params,game_params):
@@ -524,4 +615,11 @@ def saveParams(filename, dictionary):
 	json.dump(dictionary,file)
 	file.close()
 
+def loadInputFile(file_name):
+	fic = open(file_name,'r')
+	lines = []
+	
+	for line in fic :
+		lines.append(line.rstrip('\n'))
+	return lines
 

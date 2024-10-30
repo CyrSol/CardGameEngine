@@ -237,6 +237,7 @@ class GameManager(object):
 		self.game.game_count=1
 		self.game.round_count=1
 		self.output_messages = []
+		self.game_states = []
 
 	def initialisation(self):
 		self.game.fullAI = False #self.game.getNbPlayers() == self.aiManager.getNbPlayers()
@@ -298,9 +299,13 @@ class GameManager(object):
 			if (not self.debug_mode or ret == GameManager.STEP_UP):
 				if (self.debug_mode):
 					self.previousState = copy.deepcopy(self)
-				else :
 					self.previousState = None
 				self.game.step()
+				self.game_states.append(self.game.getState())
+				if self.game.state == Game.FINALISATION:
+					saveParams(self.game.general_params["log_file_state"] + "_" + str(datetime.datetime.now()) + ".json",self.game_states)
+					self.game_states = []
+					self.game.state = Game.INITIALISATION
 
 
 				if self.aiManager is not None :
@@ -592,7 +597,7 @@ class GameScene(object):
 		self.state = GameScene.NOT_INIT
 		self.general_params = general_params
 		self.game_params = game_params
-		self.game_options = game_options
+		self.game_options = loadParams(general_params["game_options"]) if "game_options" in general_params else ""
 	
 	def initialisation(self,screen,card_dict):
 		self.state = GameScene.INIT
@@ -695,7 +700,7 @@ class GameLogicFactory:
 	def __init__(self, GameManagerFactory):
 		self.GameManagerFactory = GameManagerFactory
 
-	def getGameScene(self,general_params,game_params,game_options):
+	def getGameScene(self,general_params,game_params):
 		# screen and game #
 		# Set the width and height of the screen [width, height]
 		#screen = pygame.display.set_mode([SCREEN_WIDTH,SCREEN_HEIGHT])
@@ -741,7 +746,7 @@ class GameLogicFactory:
 
 
 class GameLoop(object):
-	def __init__(self,general_params,game_params,gameSceneFactoryList,transitionManager=None, game_options=None,tick=20):
+	def __init__(self,general_params,game_params,gameSceneFactoryList,transitionManager=None, tick=20):
 		self.gameScenes = []
 		self.current_gameScene = 0
 		self.clock = None
@@ -751,12 +756,12 @@ class GameLoop(object):
 		self.gameSceneFactoryList = gameSceneFactoryList
 		#for gameSceneFactory in gameSceneFactoryList :
 		#	self.gameScenes.append(gameSceneFactory.getGameScene(general_params,game_params))
-		self.gameScenes.append(gameSceneFactoryList[0].getGameScene(general_params,game_params,game_options))
+		self.gameScenes.append(gameSceneFactoryList[0].getGameScene(general_params,game_params))
 		self.general_params = general_params
 		self.card_dict = None
 		self.screen = None
 		self.game_params = game_params
-		self.game_options  = game_options
+		#self.game_options  = loadParams(general_params["game_options"]) if "game_options" in general_params else ""
 		
 		
 	
@@ -842,8 +847,8 @@ class GameMenuNbPlayers(GameScene):
 				self.state = GameScene.STANDBY
 
 class GameMenuPlayers(GameScene):
-	def __init__(self,title,general_params,game_params,game_options):
-		super().__init__(general_params,game_params,game_options)
+	def __init__(self,title,general_params,game_params):
+		super().__init__(general_params,game_params)
 		self.title = title
 		self.outputMessages = []
 
@@ -865,7 +870,7 @@ class GameMenuPlayers(GameScene):
 					print(choice)
 					i = 0
 					for player in choice["players"] :
-						self.game_params["player" + str(2+i)] = player
+						self.game_params["player" + str(2+i)] = player.name
 						print("player" + str(2+i) + ":")
 						print( self.game_params["player" + str(2+i)])
 						i = i+1
@@ -882,32 +887,86 @@ class GameMenuPlayers(GameScene):
 				self.outputMessages.append(value)
 				self.state = GameScene.STANDBY
 
+class GameMenuOptions(GameScene):
+	def __init__(self,title,general_params,game_params):
+		super().__init__(general_params,game_params)
+		self.title = title
+		self.outputMessages = []
+
+
+	def getOutputMessages(self):
+		return self.outputMessages
+
+	def clearOutputMessages(self):
+		self.outputMessages = []
+
+	def step(self,events):
+		for event in events :
+			if event.type == pygame.USEREVENT:
+				dic =	 event.dict
+				print(event.dict)
+				if(dic["type_event"] == "input") :
+					print("Value : " + str(dic["value"]))
+					print("Key : " + str(dic["key"]))
+					for j in range(0,len(dic["value"])):
+						choice=dic["value"][j]
+						print(choice)
+						#Faire passer le type ou aller le chercher dans game_options
+						print("type : " + dic["typeParam"][j])
+						if dic["typeParam"][j] == "integer" :
+							print("int")
+							self.game_params[dic["key"][j]]=int(choice)
+						else : 
+							self.game_params[dic["key"][j]]=choice
+					self.state = GameScene.OVER
+					return 
+
+			if self.outputMessages == [] and self.state == GameScene.INIT :
+				print("STATE : " + str(self.state))
+				dic = {"title":self.title, "text":"Game options"}
+				values = {}
+				for key, v in self.game_options.items() :
+					options = []
+					for option in v["value"].split(",") :
+ 						options.append(option)
+					input = {key : {"text":v["text"],"value":{key:options},"type" : v["type"]}}
+					values.update(input)
+				dic.update({"values":values})
+				print(dic)
+				self.outputMessages.append(dic)
+				self.state = GameScene.STANDBY
 
 class GameMenuNbPlayersFactory(object):
 	def __init__(self,title):
 		self.title = title
-	def getGameScene(self,general_params,game_params,game_options):
+	def getGameScene(self,general_params,game_params):
 		return GameMenuNbPlayers(self.title,general_params,game_params)
 		
 class GameMenuPlayersFactory(object):
 	def __init__(self,title):
 		self.title = title
-	def getGameScene(self,general_params,game_params,game_options):
-		return GameMenuPlayers(self.title,general_params,game_params,game_options)
+	def getGameScene(self,general_params,game_params):
+		return GameMenuPlayers(self.title,general_params,game_params)
 
+class GameMenuOptionsFactory(object):
+	def __init__(self,title):
+		self.title = title
+	def getGameScene(self,general_params,game_params):
+		return GameMenuOptions(self.title,general_params,game_params)
+		
 class SimpleTransitionManager(object):
 	def transition(self, gameLoop):
 		if gameLoop.gameScenes[gameLoop.current_gameScene].state == GameScene.OVER:	
 			if gameLoop.current_gameScene < len(gameLoop.gameSceneFactoryList)-1:
 				gameLoop.current_gameScene = gameLoop.current_gameScene + 1
-				gameLoop.gameScenes.append(gameLoop.gameSceneFactoryList[gameLoop.current_gameScene].getGameScene(gameLoop.general_params,gameLoop.game_params,gameLoop.game_options))
+				gameLoop.gameScenes.append(gameLoop.gameSceneFactoryList[gameLoop.current_gameScene].getGameScene(gameLoop.general_params,gameLoop.game_params))
 				gameLoop.initialisationScene()
 			else :
 				return False
 		if gameLoop.gameScenes[gameLoop.current_gameScene].state == GameScene.RESET:	
 			gameLoop.current_gameScene = 0
 			gameLoop.gameScenes = []
-			gameLoop.gameScenes.append(gameLoop.gameSceneFactoryList[gameLoop.current_gameScene].getGameScene(gameLoop.general_params,gameLoop.game_params,gameLoop.game_options))
+			gameLoop.gameScenes.append(gameLoop.gameSceneFactoryList[gameLoop.current_gameScene].getGameScene(gameLoop.general_params,gameLoop.game_params))
 			gameLoop.initialisationScene()
 		return True
 
