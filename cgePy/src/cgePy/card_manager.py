@@ -218,6 +218,8 @@ class GameManager(object):
 	SAVE_PARAMS=8
 	GAME_INPUT=9
 	OUTPUT_TEST = 10
+	RECORD = 11
+	BLOCK = 12
 	PYGAME_GAME_PARAM=25
 	PYGAME_INPUT=26
 
@@ -269,7 +271,7 @@ class GameManager(object):
 			ret, dic = self.event(events)
 			#print("retour :" + str(ret))
 
-			if ret == GameManager.STEP_BACK or ret == GameManager.NEW_GAME or ret == GameManager.RETRY or ret == GameManager.SAVE_PARAMS :
+			if ret == GameManager.STEP_BACK or ret == GameManager.NEW_GAME or ret == GameManager.RETRY or ret == GameManager.SAVE_PARAMS or ret == GameManager.RECORD or ret == GameManager.BLOCK  :
 				return ret
 
 			if ret == GameManager.DEBUG_MODE:
@@ -311,6 +313,7 @@ class GameManager(object):
 				if self.aiManager is not None :
 					#gestion du temps de reflexion pour les IA
 					if self.chronoAI.check(self.game.fullAI):
+						#self.aiManager.pre_action(self.game)
 						messages = self.aiManager.play(self.game)
 						for m in messages :
 							self.game.sendMessage(m)
@@ -357,6 +360,9 @@ class EventManager(object):
 				elif event.key == pygame.K_r : ret = GameManager.RETRY
 				elif event.key == pygame.K_s : ret = GameManager.SAVE_PARAMS
 				elif event.key == pygame.K_a : ret = GameManager.OUTPUT_TEST
+				elif event.key == pygame.K_e : ret = GameManager.RECORD
+				elif event.key == pygame.K_x : ret = GameManager.BLOCK
+
 
 			if event.type == pygame.MOUSEBUTTONDOWN:
 				continue
@@ -670,6 +676,12 @@ class GameLogic(GameScene):
 
 		if (ret == GameManager.SAVE_PARAMS):
 			self.gameManager.game.saveGameParams()
+		
+		if (ret == GameManager.RECORD):
+			self.gameManager.game.players[0].record = not self.gameManager.game.players[0].record 
+
+		if (ret == GameManager.BLOCK):
+			self.gameManager.game.blocked = not self.gameManager.game.blocked 
 
 		# --- Game logic should go here
 		if (not self.gameManager.game.fullAI or (self.gameManager.game.fullAI and (self.gameManager.game.state  == Game.VALIDATION or self.gameManager.game.state  == Game.AUCTION or self.gameManager.game.state  ==  Game.GAME_OVER)) ):

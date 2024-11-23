@@ -111,6 +111,8 @@ class FormTk(object):
         self.debugmenu.add_command(label="Pas vers l'arrière", command=MenuAction(self.eventManagerTkform,'b').action)
 
         self.aimenu = tk.Menu(self.mainmenu, tearoff=0)
+        self.aimenu.add_command(label="Record", command=MenuAction(self.eventManagerTkform,'e').action)
+
         self.rulesmenu = tk.Menu(self.mainmenu, tearoff=0)
         self.aboutmenu = tk.Menu(self.mainmenu, tearoff=0)
 
