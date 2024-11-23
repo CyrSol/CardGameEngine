@@ -119,22 +119,8 @@ class AIFactoryDISP():
 	def getAI(self,num):
 		return AI("rien",0) if num != 0 else None
 
-def debug_display_cards(loadCards):
-	
-	general_params=loadParams("config/general_params.json")
-	#basePath = os.path.dirname(__file__)
-	#print(basePath + "DSP")
-	general_params["fic_config" ] = "DISP"
-	general_params["fic_interface" ] = "DISP"
-	general_params["multi_fic_config"] = False
+def debug_display_cards(general_params,loadCards):	
 	game_params=loadParams(general_params["game_params"])
-	game_params["player1"] = {"name": "Player", "ai":0}
-	game_params["nb_max_players"] = 1
-	game_params["nb_players"] = 1
-	game_params["deck" ] = "common"
-
-	#display(general_params,game_params,cards,GameManagerFactoryTRT(),UIManagerFactoryTRT())
-	#GameWindowTK.display(general_params,game_params,GameManagerFactory(GameFactoryDSP(general_params,game_params),AIFactoryDSP(),loadCards))
 
 	gameSceneFactoryList=[]
 	gameSceneFactoryList.append(GameLogicFactory(GameManagerFactory(GameFactoryDISP(general_params,game_params),AIFactoryDISP(),loadCards)))

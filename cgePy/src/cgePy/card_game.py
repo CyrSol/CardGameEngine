@@ -143,7 +143,7 @@ class Deck(object) :
 	def getState(self):
 		dict={}
 		dict[self.name + "_cards"] = [c.name for c in self.cards]
-		return dict;
+		return dict
 
 class Player(Deck) :
 	
@@ -158,6 +158,7 @@ class Player(Deck) :
 		self.nature='humain'
 		self.messages=[]
 		self.round_won=0
+		self.record = False
 	
 		
 	def selectCard(self,card):
@@ -169,6 +170,20 @@ class Player(Deck) :
 
 	def sendMessage(self,message):
 		self.messages.append(message)
+	
+	def recordOutput(self,game,filename):
+		states = game.getCurrentState(self)
+		output = ""
+		for s in states:
+			output = output + str(s) + ";"
+		if output != "" :
+			savePut(filename,output)
+	
+	def recordInput(self,message,filename):
+		input = "" + str(message.messageType) + "," + message.deckName + "," + str(message.index) + "," + message.to_string()
+		if input != "" :
+			savePut(filename,input)
+
 
 class PlayerAI(Player):
 
@@ -188,6 +203,7 @@ class AI(object):
 	def play(self,game,player):
 		return MessageDeck(Message.GAME,Deck.STOCK,player.name,"stock",0)
 
+
 class AIInput(AI):
 	def __init__(self,level,nature):
 		AI.__init__(self,level,nature)
@@ -199,20 +215,20 @@ class AIInput(AI):
 		self.unit_testing = True
 		self.last_move = ""
 		self.test_unit_errors = 0
-	
-	def getCurrentState(self,game,player):
-		return ""
-		
+
+
+
 	def play(self,game,player):
 		self.unit_testing = "unit_test" in game.general_params and game.general_params["unit_test"]
-		if (self.input == [] and self.counter == 0 and self.unit_testing):
-			if self.unit_testing :
+		if (self.input == [] and self.counter == 0):
 				self.input = loadInputFile(game.general_params["unit_test_input_file"])
-				self.expected = loadInputFile(game.general_params["unit_test_expected_file"])
-				self.output = {"start_date" : str(datetime.datetime.now())}
+				if self.unit_testing :
+					if ("unit_test_expected_file" in ame.general_params):
+						self.expected = loadInputFile(game.general_params["unit_test_expected_file"])
+					self.output = {"start_date" : str(datetime.datetime.now())}
 		
-		if self.last_iteration != self.counter and self.unit_testing:
-				states = self.getCurrentState(game,player)
+		if self.last_iteration != self.counter and self.unit_testing and len(self.expected) > self.counter :
+				states = game.getCurrentState(player)
 				output = {"last move" : self.last_move }
 				test_result = True
 				expected = self.expected[self.counter].split(";")
@@ -407,6 +423,7 @@ class Game(object) :
 		self.rules = game_params["rules"]
 		self.active_players_index = []
 		self.counter = 0
+		self.blocked = False
 
 	def start(self):
 		print("GO!")
@@ -430,6 +447,14 @@ class Game(object) :
 			pl.auction=0
 		self.nameFicStats = self.general_params["log_file"]  + "_" + str(datetime.datetime.now()) + ".csv"
 		self.nb_games = self.game_params["nb_games"]
+		if("input_file" in self.general_params):
+			fic = open(self.general_params["input_file"],"w")
+			fic.close()
+		if("output_file" in self.general_params):
+			fic = open(self.general_params["output_file"],"w")
+			fic.close()
+
+
 
 	def addPlayer(self,player):
 		self.players.append(player)
@@ -477,7 +502,10 @@ class Game(object) :
 					self.debug = card.getInfo()
 				self.action(message,player,deck,card)
 		self.cleanMessages()
-		
+
+	def game_action(self, message,player,deck,card):
+		return
+
 	def action(self, message,player,deck,card):
 		message.playerName
 		for c in player.handled:
@@ -505,7 +533,16 @@ class Game(object) :
 					#player.cards.insert(ind2,card)
 				card2.handle= False
 				player.handled = []
-			self.changed=True
+		else :
+			if player.record:
+				player.recordOutput(self,self.general_params["output_file"])
+				player.recordInput(message,self.general_params["input_file"])
+		if self.blocked:
+			return None
+		else :
+			self.game_action(message,player,deck,card)
+
+		self.changed=True
 	
 	def isGameOver(self):
 		return self.state == Game.GAME_OVER
@@ -564,6 +601,13 @@ class Game(object) :
 		for d in self.decks:
 			dict.update(d.getState())
 		return dict
+	
+	def getCurrentState(self,player):
+		list = []
+		listDeck = self.general_params["list_deck_state"]
+		for d in listDeck :
+			list.append(str(self.getState()["deck_cards"]).replace(" ",""))
+		return list
 
 class GameFactory():
 	def __init__(self,general_params,game_params):
@@ -623,3 +667,7 @@ def loadInputFile(file_name):
 		lines.append(line.rstrip('\n'))
 	return lines
 
+def savePut(filename, put):
+	file = open(filename,"a")
+	file.write(put+"\n")
+	file.close()
