@@ -81,9 +81,8 @@ class GameDISP(Game):
 					
 			
 
-	def action(self, message,player,deck,card):
-		#print(player.name + " " +card.getInfo())
-		Game.action(self, message,player,deck,card)
+	def game_action(self, message,player,deck,card):
+		
 		if(not  self.isGameOver()):
 			if(player.name in self.awaited):
 				
