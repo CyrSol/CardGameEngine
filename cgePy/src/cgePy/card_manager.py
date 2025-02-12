@@ -603,7 +603,7 @@ class GameScene(object):
 		self.state = GameScene.NOT_INIT
 		self.general_params = general_params
 		self.game_params = game_params
-		self.game_options = loadParams(general_params["game_options"]) if "game_options" in general_params else ""
+		self.game_options = loadParams(general_params["game_options"]) if "game_options" in general_params else None
 	
 	def initialisation(self,screen,card_dict):
 		self.state = GameScene.INIT
@@ -935,18 +935,19 @@ class GameMenuOptions(GameScene):
 
 			if self.outputMessages == [] and self.state == GameScene.INIT :
 				print("STATE : " + str(self.state))
-				dic = {"title":self.title, "text":"Game options"}
-				values = {}
-				for key, v in self.game_options.items() :
-					options = []
-					for option in v["value"].split(",") :
- 						options.append(option)
-					input = {key : {"text":v["text"],"value":{key:options},"type" : v["type"]}}
-					values.update(input)
-				dic.update({"values":values})
+				dic = dicOptionsMaker(self.title,self.game_options,"Game options")
 				print(dic)
 				self.outputMessages.append(dic)
 				self.state = GameScene.STANDBY
+
+def addOption(dic,key,typeParam,list_options,text=""):
+	option = {key :{"value":{key:list_options},"type":typeParam, "text": text}}
+	dic.update(option)
+	return dic
+
+def dicOptionsMaker(title,options_dic,text=""):
+	dic = {"title":title, "text":text, "values":options_dic}
+	return dic
 
 class GameMenuNbPlayersFactory(object):
 	def __init__(self,title):
