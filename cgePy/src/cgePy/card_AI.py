@@ -6,6 +6,39 @@ from operator import itemgetter
 
 ##########################################################################################################
 ##########################################################################################################
+class AIHuman(AI):
+	def __init__(self):
+		AI.__init__(self,0,'AI_Human')
+
+	def play(self,game,player):
+		if game.state == Game.PREPARATION :
+			#cardsList = listCardsOwned(player)
+			#for i in range(0,5):
+				#print(i)
+			#	e = cardsList.pop(random.randint(0,len(cardsList)-1))
+				#print(e)
+			#	c = game.board.getCardFromName(e)
+			#	player.addBack(c)
+			if len(player.cards) == 0:
+				player.cardsPlayable = listCardsOwned(player,game.board.getCompl())
+			return MessageDeck(Message.GAME,Deck.PLAYER,player.name,player.name,0)
+
+		elif game.state == Game.RECUPERATION :
+			#cardsList = listCardsOwned(player)
+			#for i in range(0,5):
+				#print(i)
+			#	e = cardsList.pop(random.randint(0,len(cardsList)-1))
+				#print(e)
+			#	c = game.board.getCardFromName(e)
+			#	player.addBack(c)
+			if player.nb_picked == 0:
+				player.cardsPickable = []
+				i = 1
+				for c in game.cardsPickable:
+					player.cardsPickable.append(c.tag + " - " + c.getInfo() + " - " +  str(i))
+					i = i + 1
+			return MessageDeck(Message.GAME,Deck.PLAYER,player.name,player.name,0)
+	
 
 class AITRTRandom(AI):
 	def __init__(self):

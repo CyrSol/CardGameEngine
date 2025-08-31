@@ -120,6 +120,9 @@ class AIFactoryDISP():
 
 def debug_display_cards(general_params,loadCards):	
 	game_params=loadParams(general_params["game_params"])
+	general_params["fic"] = "DISP"
+	game_params["deck"] = "common"
+	game_params["nb_players"] = 1
 
 	gameSceneFactoryList=[]
 	gameSceneFactoryList.append(GameLogicFactory(GameManagerFactory(GameFactoryDISP(general_params,game_params),AIFactoryDISP(),loadCards)))

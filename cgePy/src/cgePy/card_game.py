@@ -145,6 +145,23 @@ class Deck(object) :
 		dict[self.name + "_cards"] = [c.name for c in self.cards]
 		return dict
 
+	def addCardsOwned(self,cardName):
+		if (cardName in self.cardsOwned):
+			self.cardsOwned[cardName] = self.cardsOwned[cardName]+1
+		else :
+			self.cardsOwned[cardName] = 1
+
+	def removeCardsOwned(self,cardName):
+		if (cardName in self.cardsOwned):
+			if self.cardsOwned[cardName]-1 == 0:
+				del self.cardsOwned[cardName]
+			else : 
+				self.cardsOwned[cardName] = self.cardsOwned[cardName]-1
+
+	def saveDeckCardsOwned(self):
+		if len(self.cardsOwned) > 0 :
+			saveCardsOwned(self.name,self.cardsOwned)
+
 class Player(Deck) :
 	
 	def __init__(self,name):
@@ -159,6 +176,8 @@ class Player(Deck) :
 		self.messages=[]
 		self.round_won=0
 		self.record = False
+		self.nb_picked = 0
+		self.cardsPickable = []
 	
 		
 	def selectCard(self,card):
@@ -183,6 +202,7 @@ class Player(Deck) :
 		input = "" + str(message.messageType) + "," + message.deckName + "," + str(message.index) + "," + message.to_string()
 		if input != "" :
 			savePut(filename,input)
+
 
 
 class PlayerAI(Player):
@@ -223,7 +243,7 @@ class AIInput(AI):
 		if (self.input == [] and self.counter == 0):
 				self.input = loadInputFile(game.general_params["unit_test_input_file"])
 				if self.unit_testing :
-					if ("unit_test_expected_file" in ame.general_params):
+					if ("unit_test_expected_file" in game.general_params):
 						self.expected = loadInputFile(game.general_params["unit_test_expected_file"])
 					self.output = {"start_date" : str(datetime.datetime.now())}
 		
@@ -393,6 +413,8 @@ class Game(object) :
 	REACTION=13
 	PREPARATION=14
 	FINALISATION=16
+	CONSERVATION=17
+	RECUPERATION=18
 
 	def __init__(self,general_params,game_params):
 		self.board = Board()
@@ -424,6 +446,9 @@ class Game(object) :
 		self.active_players_index = []
 		self.counter = 0
 		self.blocked = False
+		self.cardsPickable = []
+		self.cardsOnGame = []
+		self.stateIteration = 0
 
 	def start(self):
 		print("GO!")
@@ -453,6 +478,8 @@ class Game(object) :
 		if("output_file" in self.general_params):
 			fic = open(self.general_params["output_file"],"w")
 			fic.close()
+		self.cardsPickable = []
+		self.cardsOnGame = []
 
 
 
@@ -549,6 +576,7 @@ class Game(object) :
 
 	def saveGameParams(self):
 		saveParams(self.general_params["game_params"],self.game_params)
+			
 		self.debug = "Paramètres de jeu sauvegardés"
 
 	def loadGameParams(self):
@@ -596,17 +624,20 @@ class Game(object) :
 		for i in self.active_players_index:
 			self.awaited.append(self.players[i].name)
 	
-	def getState(self):
-		dict = {}
+	def getState(self, printable=False):
+		if printable:
+			self.stateIteration = self.stateIteration + 1
+		dict = {"iteration" : self.stateIteration}
 		for d in self.decks:
 			dict.update(d.getState())
+		#print(dict)
 		return dict
 	
 	def getCurrentState(self,player):
 		list = []
 		listDeck = self.general_params["list_deck_state"]
 		for d in listDeck :
-			list.append(str(self.getState()["deck_cards"]).replace(" ",""))
+			list.append(str(self.getState()[d]).replace(" ",""))
 		return list
 
 class GameFactory():
@@ -638,6 +669,11 @@ def loadParams(filename):
 def loadCardsOwned(playerName):
 	filename = os.path.join(os.getcwd(),"players/"+playerName+".json")
 	return loadParams(filename)
+
+def saveCardsOwned(playerName, dict):
+	filename = os.path.join(os.getcwd(),"players/"+playerName+".json")
+	print(filename)
+	saveParams(filename, dict)
 	
 
 def listCardsOwned(player,cards_ref=None):
