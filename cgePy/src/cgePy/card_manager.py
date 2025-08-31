@@ -303,11 +303,17 @@ class GameManager(object):
 					self.previousState = copy.deepcopy(self)
 					self.previousState = None
 				self.game.step()
-				self.game_states.append(self.game.getState())
+				self.game_states.append(self.game.getState(True))
 				if self.game.state == Game.FINALISATION:
 					saveParams(self.game.general_params["log_file_state"] + "_" + str(datetime.datetime.now()) + ".json",self.game_states)
 					self.game_states = []
 					self.game.state = Game.INITIALISATION
+
+				if self.game.state == Game.CONSERVATION:
+					for p in self.game.players:
+						p.saveDeckCardsOwned()
+						print(p.name + " cards saved")
+					self.game.state = Game.VALIDATION
 
 
 				if self.aiManager is not None :
@@ -854,7 +860,8 @@ class GameMenuNbPlayers(GameScene):
 				list_nb_players =  []
 				for i in range (self.game_params["nb_min_players"],self.game_params["nb_max_players"]+1):
 					list_nb_players.append(i)
-				value = {"title":self.title,"text":"nombre de joueurs","value":{"nb_joueurs":list_nb_players}}
+				options_dic = addOption({},"nb_joueurs","string",list_nb_players,"nombre de joueurs")
+				value = dicOptionsMaker(self.title,options_dic)
 				self.outputMessages.append(value)
 				self.state = GameScene.STANDBY
 
@@ -878,11 +885,12 @@ class GameMenuPlayers(GameScene):
 				#print(event.dict)
 				if(dic["type_event"] == "input") :
 					print("Value : " + str(dic["value"]))
-					choice=self.game_options[dic["value"][0]]
+					choice=self.game_options["players"][dic["value"][0]]
 					print(choice)
 					i = 0
 					for player in choice["players"] :
-						self.game_params["player" + str(2+i)] = player.name
+						print(player)
+						self.game_params["player" + str(2+i)] = player
 						print("player" + str(2+i) + ":")
 						print( self.game_params["player" + str(2+i)])
 						i = i+1
@@ -893,9 +901,10 @@ class GameMenuPlayers(GameScene):
 			if self.outputMessages == [] and self.state == GameScene.INIT :
 				print("STATE : " + str(self.state))
 				list_players =  []
-				for key in self.game_options :
+				for key in self.game_options["players"] :
 					list_players.append(key)
-				value = {"title":self.title,"text":"joueurs","value":{"nb_joueurs":list_players}}
+				options_dic = addOption({},"players","string",list_players,"joueurs")
+				value = dicOptionsMaker(self.title,options_dic)
 				self.outputMessages.append(value)
 				self.state = GameScene.STANDBY
 
@@ -935,7 +944,7 @@ class GameMenuOptions(GameScene):
 
 			if self.outputMessages == [] and self.state == GameScene.INIT :
 				print("STATE : " + str(self.state))
-				dic = dicOptionsMaker(self.title,self.game_options,"Game options")
+				dic = dicOptionsMaker(self.title,self.game_options["game_options"],"Game options")
 				print(dic)
 				self.outputMessages.append(dic)
 				self.state = GameScene.STANDBY
