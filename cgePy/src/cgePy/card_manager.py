@@ -225,6 +225,7 @@ class GameManager(object):
 	PYGAME_GAME_PARAM=25
 	PYGAME_INPUT=26
 	RULES=27
+	SCREENSHOT=28
 
 	def __init__(self,game,interfaceManager,cardList,cards_ref,eventManager,aiManager,reflexionTime):
 		self.game=game
@@ -274,7 +275,7 @@ class GameManager(object):
 			ret, dic = self.event(events)
 			#print("retour :" + str(ret))
 
-			if ret == GameManager.STEP_BACK or ret == GameManager.NEW_GAME or ret == GameManager.RETRY or ret == GameManager.SAVE_PARAMS or ret == GameManager.RECORD or ret == GameManager.BLOCK  :
+			if ret == GameManager.STEP_BACK or ret == GameManager.NEW_GAME or ret == GameManager.RETRY or ret == GameManager.SAVE_PARAMS or ret == GameManager.RECORD or ret == GameManager.BLOCK or ret == GameManager.SCREENSHOT :
 				return ret
 
 			if ret == GameManager.DEBUG_MODE:
@@ -377,6 +378,7 @@ class EventManager(object):
 				elif event.key == pygame.K_e : ret = GameManager.RECORD
 				elif event.key == pygame.K_x : ret = GameManager.BLOCK
 				elif event.key == pygame.K_l : ret = GameManager.RULES
+				elif event.key == pygame.K_k : ret = GameManager.SCREENSHOT
 				else:
 					ret = GameManager.GAME_INPUT
 					dic = {"value":["button_"+safe_chr(event.key)]}
@@ -700,7 +702,14 @@ class GameLogic(GameScene):
 
 		if (ret == GameManager.BLOCK):
 			self.gameManager.game.blocked = not self.gameManager.game.blocked 
-		
+
+		if (ret == GameManager.SCREENSHOT):
+			"""Takes a screenshot of the screen and saves it to a file."""
+			timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+			fic = self.gameManager.game.general_params["fic"]
+			filename = f"screenshot/{fic}_{timestamp}.png"
+			pygame.image.save(self.screen, filename)
+			print(f"Screenshot saved to {filename}")
 
 		# --- Game logic should go here
 		if (not self.gameManager.game.fullAI or (self.gameManager.game.fullAI and (self.gameManager.game.state  == Game.VALIDATION or self.gameManager.game.state  == Game.AUCTION or self.gameManager.game.state  ==  Game.GAME_OVER)) ):
