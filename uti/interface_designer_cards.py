@@ -1,4 +1,5 @@
 import os
+import copy
 import pygame
 import tkinter as tk
 from tkinter import ttk
@@ -59,11 +60,36 @@ class FakeDeck:
         nbmax = int(elements[9])
         return FakeDeck(r, int1, int2, nb, v, name, hollow, nbmax)
 
+# --- Flags de commandes tkinter ---
 b_save = False
 b_load = False
 b_delete = False
 b_unselect = False
 
+# --- Historique Undo/Redo ---
+undo_stack = []
+redo_stack = []
+
+def save_state():
+    global undo_stack, redo_stack, deck_list
+    undo_stack.append(copy.deepcopy(deck_list))
+    redo_stack.clear()
+
+def undo():
+    global undo_stack, redo_stack, deck_list, change
+    if undo_stack:
+        redo_stack.append(copy.deepcopy(deck_list))
+        deck_list = undo_stack.pop()
+        change = True
+
+def redo():
+    global undo_stack, redo_stack, deck_list, change
+    if redo_stack:
+        undo_stack.append(copy.deepcopy(deck_list))
+        deck_list = redo_stack.pop()
+        change = True
+
+# --- Actions boutons ---
 def save():
     global b_save
     b_save = True
@@ -80,6 +106,7 @@ def unselect():
     global b_unselect
     b_unselect = True
 
+# --- Sauvegarde/Chargement fichiers ---
 def save_file(file_name, decks):
     base_path = os.getcwd()
     file_absolute_name = os.path.join(base_path, file_name)
@@ -97,9 +124,8 @@ def load_file(file_name):
             decks.append(d)
     return decks
 
+# --- Initialisation ---
 general_params = loadParams("config/general_params.json")
-
-# Initialisation de pygame
 pygame.init()
 pygame.key.set_repeat(300, 30)
 width = general_params["screen_width"]
@@ -107,23 +133,19 @@ menu_width = 150
 height = general_params["screen_height"] + 10
 
 screen = pygame.display.set_mode((width, height))
-# Chargement de l'image de fond
 background_path = general_params["background"]
 
-# Configuration de l'interface tkinter
 root = tk.Tk()
 root.title("Interface de Création de Jeu")
 
-# Frame pour le canvas pygame
 frame = tk.Frame(root, width=menu_width, height=height)
 frame.pack(side=tk.LEFT)
 
-# Frame pour le menu tkinter
 menu_frame = tk.Frame(root, width=menu_width, height=height, bg='gray')
 menu_frame.pack_propagate(False)
 menu_frame.pack(side=tk.RIGHT, fill=tk.Y)
 
-# Création des widgets tkinter
+# Widgets tkinter
 entry_deckname = tk.Entry(menu_frame)
 entry_deckname.insert(0, "player")
 entry_deckname.pack(pady=5)
@@ -158,56 +180,50 @@ entry_num = tk.Entry(menu_frame)
 entry_num.insert(0, "")
 entry_num.pack(pady=5)
 
-# Boutons tkinter
+# Boutons
 tk.Button(menu_frame, text="Sauvegarder", command=save).pack(pady=10)
 tk.Button(menu_frame, text="Charger", command=load).pack(pady=5)
 tk.Button(menu_frame, text="Supprimer", command=delete).pack(pady=5)
 tk.Button(menu_frame, text="Désélectionner", command=unselect).pack(pady=5)
 
-# Initialisation du canvas pygame
-embed = tk.Frame(frame, width=menu_width, height=height)  # Frame to hold the pygame window
+embed = tk.Frame(frame, width=menu_width, height=height)
 embed.pack()
-#os.environ['SDL_VIDEODRIVER'] = 'x11'
-#os.environ['SDL_WINDOWID'] = str(embed.winfo_id())
 
 pygame.display.set_caption("Interface de Création de Jeu")
 pygame.display.init()
 img = pygame.image.load(background_path).convert()
 picture = pygame.transform.scale(img, (width, height - 15))
 
-# Liste des decks
 deck_list = []
-
 clock = pygame.time.Clock()
 selected_deck = None
 change = False
 
-# Boucle principale
+# --- Boucle principale ---
 def mainloop():
     global change, selected_deck, b_unselect, b_delete, b_save, b_load, deck_list
     moved = False
     m_x = 0
     m_y = 0
     for event in pygame.event.get():
-
         if event.type == pygame.QUIT:
             root.quit()
             return
         elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE: unselect()
-                elif event.key == pygame.K_x: delete()
-                elif event.key == pygame.K_DOWN: 
-                    moved = True
-                    m_y = 1 
-                elif event.key == pygame.K_UP: 
-                    moved = True
-                    m_y = -1 
-                elif event.key == pygame.K_RIGHT: 
-                    moved = True
-                    m_x = 1 
-                elif event.key == pygame.K_LEFT: 
-                    moved = True
-                    m_x = -1 
+            if event.key == pygame.K_ESCAPE: unselect()
+            elif event.key == pygame.K_x: delete()
+            elif event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                undo()
+            elif event.key == pygame.K_y and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                redo()
+            elif event.key == pygame.K_DOWN: 
+                moved = True; m_y = 1 
+            elif event.key == pygame.K_UP: 
+                moved = True; m_y = -1 
+            elif event.key == pygame.K_RIGHT: 
+                moved = True; m_x = 1 
+            elif event.key == pygame.K_LEFT: 
+                moved = True; m_x = -1 
         elif event.type == pygame.MOUSEBUTTONUP:
             pos = pygame.mouse.get_pos()
             current_deck = None
@@ -228,10 +244,10 @@ def mainloop():
                         slider_nb_max.set(current_deck.nbmax)
                         change = True
                         continue
-
-            x = pos[0] #- slider_width.get() / 2
-            y = pos[1] #- slider_height.get() / 2
+            x = pos[0]
+            y = pos[1]
             if current_deck is None and x < width - slider_width.get() and slider_width.get() > 0 and slider_height.get() > 0:
+                save_state()
                 rectangle = pygame.Rect(x, y, slider_width.get(), slider_height.get())
                 deck = FakeDeck(rectangle, slider_interval.get(), slider_interval2.get(), slider_nb_cards.get(), vertical_var.get(), entry_deckname.get(), hollow_var.get(), slider_nb_max.get())
                 if selected_deck is not None:
@@ -249,6 +265,7 @@ def mainloop():
 
     if b_delete:
         if selected_deck is not None:
+            save_state()
             deck_list.remove(selected_deck)
             selected_deck = None
             change = True
@@ -264,16 +281,17 @@ def mainloop():
         change = True
 
     if(moved and selected_deck is not None):
-            if(m_x != 0 or m_y != 0):
-                selected_deck.r.y = selected_deck.r.y + m_y
-                selected_deck.r.x = selected_deck.r.x + m_x
-                change = True
+        save_state()
+        if(m_x != 0 or m_y != 0):
+            selected_deck.r.y = selected_deck.r.y + m_y
+            selected_deck.r.x = selected_deck.r.x + m_x
+            change = True
+
     if change:
         if img:
             screen.blit(picture, [0, 0])
         else:
             screen.fill(WHITE)
-
         for d in deck_list:
             c = (255, 0, 0) if d == selected_deck else (0, 255, 0)
             d.draw(screen, c)
@@ -288,6 +306,4 @@ def mainloop():
 
 root.after(10, mainloop)
 root.mainloop()
-
 pygame.quit()
-

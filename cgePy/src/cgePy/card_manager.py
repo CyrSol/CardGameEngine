@@ -46,7 +46,7 @@ class DeckInterface(object):
 		self.nbmax = nbmax
 	
 	def interfaceCards(self):
-		cardList = self.deckDisplayManager.getList(self.deckInterfaceType)
+		cardList = self.deckDisplayManager.getList(self)
 		self.cardInterfaces = []
 		for i in range(0,len(cardList)):
 			x=self.x
@@ -73,18 +73,20 @@ class DeckInterface(object):
 				else: 
 					name=cardList[i].name
 			self.cardInterfaces.append(CardInterface(x,y,self.width,self.height,name,i,marked,handle))
+			#TODO inverser la liste pour l'affichage
+		self.cardInterfaces.reverse()
 	
 class DeckDisplayManager(object):
 	def __init__(self,deck):
 		self.deck = deck
 		
-	def getList(self, deckType):
-		if deckType == Deck.STOCK or deckType == Deck.WASTE:
+	def getList(self, deckInterface):
+		if deckInterface.nbmax == 1:
 			return [self.deck.showFront()]
-		elif deckType == Deck.SELECTED:
+		elif deckInterface.deckInterfaceType == Deck.SELECTED:
 			return self.deck.getSelected()
 		else:
-			return self.deck.cards if len(self.deck.cards) >= 1 else [None]
+			return self.deck.cards[0:deckInterface.nbmax] if len(self.deck.cards) >= 1 else [None]
 		
 class InterfaceManager(object):
 	def __init__(self):
@@ -222,6 +224,7 @@ class GameManager(object):
 	BLOCK = 12
 	PYGAME_GAME_PARAM=25
 	PYGAME_INPUT=26
+	RULES=27
 
 	def __init__(self,game,interfaceManager,cardList,cards_ref,eventManager,aiManager,reflexionTime):
 		self.game=game
@@ -298,6 +301,11 @@ class GameManager(object):
 			if ret == GameManager.OUTPUT_TEST:
 				self.game.addOutputMessage(self.interfaceManager.outputValue({"title":"TRT","text":"choisir une valeur","value":{"bet":[1,2,3,4,5,6]}},self.eventManager.name))
 
+			if (ret == GameManager.RULES):
+				if("fic_rules") in self.game.general_params :
+					dic = {"rules":"yes","path":self.game.general_params["fic_rules"],"title":"Règles"}
+					self.game.addOutputMessage(MessageValue( Message.CHOICE,Deck.CHOICE, self.game.players[0].name, "output", dic))
+
 			if (not self.debug_mode or ret == GameManager.STEP_UP):
 				if (self.debug_mode):
 					self.previousState = copy.deepcopy(self)
@@ -368,7 +376,10 @@ class EventManager(object):
 				elif event.key == pygame.K_a : ret = GameManager.OUTPUT_TEST
 				elif event.key == pygame.K_e : ret = GameManager.RECORD
 				elif event.key == pygame.K_x : ret = GameManager.BLOCK
-
+				elif event.key == pygame.K_l : ret = GameManager.RULES
+				else:
+					ret = GameManager.GAME_INPUT
+					dic = {"value":["button_"+safe_chr(event.key)]}
 
 			if event.type == pygame.MOUSEBUTTONDOWN:
 				continue
@@ -685,9 +696,11 @@ class GameLogic(GameScene):
 		
 		if (ret == GameManager.RECORD):
 			self.gameManager.game.players[0].record = not self.gameManager.game.players[0].record 
+			print("record" + str(self.gameManager.game.players[0].record ))
 
 		if (ret == GameManager.BLOCK):
 			self.gameManager.game.blocked = not self.gameManager.game.blocked 
+		
 
 		# --- Game logic should go here
 		if (not self.gameManager.game.fullAI or (self.gameManager.game.fullAI and (self.gameManager.game.state  == Game.VALIDATION or self.gameManager.game.state  == Game.AUCTION or self.gameManager.game.state  ==  Game.GAME_OVER)) ):
@@ -992,4 +1005,17 @@ class SimpleTransitionManager(object):
 			gameLoop.initialisationScene()
 		return True
 
+def safe_chr(value: int, *, replace_with: str = '???') -> str:
+    """Version sécurisée de chr() qui gère les valeurs invalides et les caractères non imprimables."""
+    try:
+        if not (0 <= value <= 0x10FFFF):
+            return replace_with
+        c = chr(value)
+        # Optionnel : filtrer les caractères de contrôle ou non imprimables
+        if c.isprintable():
+            return c
+        else:
+            return replace_with
+    except Exception:
+        return replace_with
 

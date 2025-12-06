@@ -2,6 +2,7 @@ import random
 import copy
 import json, os, sys
 import datetime
+import ast
 
 from .card_stats import *
 
@@ -199,7 +200,12 @@ class Player(Deck) :
 			savePut(filename,output)
 	
 	def recordInput(self,message,filename):
-		input = "" + str(message.messageType) + "," + message.deckName + "," + str(message.index) + "," + message.to_string()
+		input = "" 
+		if(isinstance(message,MessageDeck)):
+			input = str(message.messageType) + "," + message.deckName + "," + str(message.index) + "," + message.to_string() + "," + "deck"
+		if(isinstance(message,MessageValue)):
+			res = list(map(lambda x: x + "_sim" if x.startswith("button_") else x, message.value))
+			input = str(message.messageType) + "," + message.playerName + "," + str(res) + "," + message.to_string() +  "," + "value"
 		if input != "" :
 			savePut(filename,input)
 
@@ -268,7 +274,12 @@ class AIInput(AI):
 				item = self.input.pop(0).split(",")
 				self.last_move = item
 				self.counter = self.counter + 1
-				return MessageDeck(Message.GAME,int(item[0]),player.name,item[1],int(item[2]))
+				message = None
+				if(item[4] == "deck"):
+						message = MessageDeck(Message.GAME,int(item[0]),player.name,item[1],int(item[2]))
+				if(item[4] == "value"):
+						message = MessageValue(Message.GAME,int(item[0]),player.name,item[3],ast.literal_eval(item[2]))
+				return  message
 			
 class AIManager(object):
 		def __init__(self):
@@ -305,6 +316,7 @@ class Board(object) :
 
 	def fillStock(self):
 		self.stock.cards = []
+		#TODO => cardowned
 		for c in self.stock_init.cards:
 			self.stock.cards.append(copy.deepcopy(c))
 
