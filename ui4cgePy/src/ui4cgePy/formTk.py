@@ -1,7 +1,8 @@
 import tkinter as tk
 import pygame
 import os, platform
-from tkinter import ttk
+from tkinter import ttk, scrolledtext
+import re
 
 PYGAME_GAME_PARAM= 25
 PYGAME_INPUT = 26
@@ -73,9 +74,12 @@ class FormTk(object):
       if self.gameLoop is not None : 
           for dic in self.gameLoop.getOutputMessages():
            #print(dic)
-           ret, key, typeParam = self.popup(dic)
+           if "rules" in dic :
+                self.show_file_popup(dic["path"],dic["title"])
+           else :
+            ret, key, typeParam = self.popup(dic)
            #print(ret)
-           self.eventManagerTkform.game_input(ret,key,typeParam)
+            self.eventManagerTkform.game_input(ret,key,typeParam)
           for event in self.eventManagerTkform.listeEvents:
              #print(event)
              pygame.event.post(event)
@@ -165,7 +169,21 @@ class FormTk(object):
         
         h = 500
         l = 130 + 90*(nb-1)
-        fInfos.geometry(str(h)+'x'+str(l))
+
+        # Dimensions de l'écran
+        screen_w = fInfos.winfo_screenwidth()
+        screen_h = fInfos.winfo_screenheight()
+        
+        # Coordonnées pour centrer
+        x = (screen_w // 2) - (l // 2)
+        y = (screen_h // 2) - (h // 2)
+        
+        # Positionne la fenêtre
+        fInfos.geometry(f"{h}x{l}+{x}+{y}")
+        fInfos.lift()
+        fInfos.attributes('-topmost', True)
+        fInfos.after(100, lambda: fInfos.attributes('-topmost', False))
+        #fInfos.geometry(str(h)+'x'+str(l))
         tk.Label(fInfos, text=dic["text"]).pack(padx=10, pady=10)
         widgetsList = []
         i=0
@@ -197,5 +215,82 @@ class FormTk(object):
         listbox.pack(padx=1, pady=1)
         listbox.tag = tag
         return listbox
+
+
+    def show_file_popup(self, filepath, title="Contenu du fichier"):
+        
+        with open(filepath, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Analyse du fichier pour découper selon les balises seules sur une ligne
+        sections = []
+        current_tag = None
+        current_content = []
+
+        tag_pattern = re.compile(r"^<([a-zA-Z0-9_]+)>\s*$")  # correspond à <balise> seule sur une ligne
+
+        for line in lines:
+            match = tag_pattern.match(line.strip())
+            if match:
+                if current_tag:
+                    sections.append((current_tag, "".join(current_content).strip()))
+                    current_content = []
+                current_tag = match.group(1)
+            else:
+                current_content.append(line)
+
+        if current_tag:
+            sections.append((current_tag, "".join(current_content).strip()))
+
+        if not sections:
+            messagebox.showinfo("Aucune balise trouvée", "Le fichier ne contient aucune balise seule sur une ligne.")
+            return
+
+        # Création de la popup
+        popup = tk.Toplevel(self.root)
+        popup.title(title)
+        popup.geometry("800x600")
+
+        # Centre la popup
+        self.root.update_idletasks()
+        w, h = 800, 600
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (w // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (h // 2)
+        popup.geometry(f"{w}x{h}+{x}+{y}")
+
+        popup.lift()
+        popup.attributes('-topmost', True)
+        popup.after(100, lambda: popup.attributes('-topmost', False))
+
+        # Création du notebook (onglets)
+        notebook = ttk.Notebook(popup)
+        notebook.pack(fill="both", expand=True)
+
+        # Ajout des onglets avec Text + Scrollbars
+        for tag, content in sections:
+            frame = ttk.Frame(notebook)
+            notebook.add(frame, text=tag)
+
+            # Création d'une frame pour gérer Text + Scrollbars
+            text_frame = ttk.Frame(frame)
+            text_frame.pack(fill="both", expand=True)
+
+            text_widget = tk.Text(text_frame, wrap="none", bg="#f8f8f8", font=("Consolas", 10))
+            text_widget.insert("1.0", content)
+            text_widget.config(state="disabled")  # Lecture seule
+
+            # Scroll vertical
+            y_scroll = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+            text_widget.configure(yscrollcommand=y_scroll.set)
+            y_scroll.pack(side="right", fill="y")
+
+            # Scroll horizontal
+            x_scroll = ttk.Scrollbar(text_frame, orient="horizontal", command=text_widget.xview)
+            text_widget.configure(xscrollcommand=x_scroll.set)
+            x_scroll.pack(side="bottom", fill="x")
+
+            text_widget.pack(fill="both", expand=True, side="left")
+
+        tk.Button(popup, text="Fermer", command=popup.destroy).pack(pady=5)
 
 

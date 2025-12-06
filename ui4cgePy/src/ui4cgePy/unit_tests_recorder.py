@@ -17,6 +17,7 @@ class GameUTRC(Game):
 		self.selected_deck = None
 		self.selected_target_deck = None
 		self.mode = 0
+		self.actionDeck = None
 
 	def start(self):
 		self.state = Game.INITIALISATION
@@ -33,7 +34,7 @@ class GameUTRC(Game):
 			if self.state == Game.DISTRIBUTION:
 
 				self.board.fillStock()
-				self.board.stock.showFront().hidden = False
+				#self.board.stock.showFront().hidden = False
 				self.board.fillDeck(52)
 
 				self.state = Game.ACTION
@@ -42,39 +43,26 @@ class GameUTRC(Game):
 			
 
 			elif self.state == Game.ACTION and len(self.awaited) == 0:
-				if self.selected_target_deck.deckType == Deck.PLAYER :
-					card_played = None
-					if self.selected_deck.deckType == Deck.STOCK or self.selected_deck.deckType == Deck.BOARD:
-						print(self.selected_deck.name)
-						card_played = self.selected_deck.showFront()
-						card_played.hidden = False
-						card_played.marked = False
-						if (self.mode == 0):
-							card = self.selected_target_deck.selected[0]
-							index = self.selected_target_deck.cards.index(card)
-							self.selected_target_deck.cards[index] = card_played
-						else:
-							self.selected_target_deck.addFront(card_played)
-						self.selected_deck.cards.remove(card_played)
-						self.selected_deck.showFront().marked = True
-						self.selected_deck.showFront().hidden = False
+				
+				card_played = None
+				b = len(self.selected_target_deck.selected) > 0 and not self.selected_target_deck.selected[0] == None and self.selected_target_deck.selected[0].name == ""
+				if (b):
+					self.selected_target_deck.cards.remove(self.selected_target_deck.selected[0])
+				for c in self.selected_deck.selected :
+					if self.mode == 0 :
+						self.selected_target_deck.addFront(c)
 					else:
-						for c in self.selected_deck.selected :
-							self.selected_target_deck.addFront(c)
-							self.selected_deck.cards.remove(c)
+						self.selected_target_deck.addBack(c)
+					self.selected_deck.cards.remove(c)
+					c.marked = False
 
-				elif self.selected_target_deck.deckType != Deck.PLAYER :
-					for c in self.selected_deck.selected :
-						c.marked = False
-						self.board.discard(c)
-						self.selected_deck.cards.remove(c)
+
 
 				self.selected_target_deck.selected = []
 				self.selected_deck.selected = []
-				if self.selected_deck.deckType == Deck.PLAYER :
-					self.selected_target_deck = None
-					self.selected_deck = None
-					self.mode = 0
+				self.selected_target_deck = None
+				self.selected_deck = None
+				self.mode = 0
 				self.awaitEveryActive()
 				self.changed=True
 
@@ -84,7 +72,77 @@ class GameUTRC(Game):
 	def game_action(self, message,player,deck,card):
 		
 		if(not  self.isGameOver()):
-			
+
+			if isinstance(message,MessageValue) and  "button_g" in message.value[0] and self.selected_deck is not None:
+				if message.value[0] == "button_g":
+					list_choice = ["shuffle","face up","face down","select all","unselect"]
+					options_dic = addOption({},"action_choice","string",list_choice,"choose an action")
+					dic = dicOptionsMaker("UTRC",options_dic)
+					self.addOutputMessage(MessageValue( Message.CHOICE,Deck.CHOICE, self.players[0].name, "output", dic))
+				self.state = Game.SELECTION
+				return
+
+			if isinstance(message,MessageValue) and  "button_h" in message.value[0] and self.selected_deck is not None:
+				if message.value[0] == "button_h":
+					list_choice = []
+					for i in range (0,self.selected_deck.getNbCards()+1):
+						list_choice.append(i)
+					options_dic = addOption({},"action_choice","integer",list_choice,"chose the number of cards to select")
+					dic = dicOptionsMaker("UTRC",options_dic)
+					self.addOutputMessage(MessageValue( Message.CHOICE,Deck.CHOICE, self.players[0].name, "output", dic))
+				self.state = Game.AUCTION
+				return
+
+			if(self.state == Game.SELECTION and self.selected_deck is not None):
+				self.actionDeck = message.value[0]
+				if self.actionDeck == "shuffle":
+					self.selected_deck.shuffle()
+					if len(self.selected_deck.selected) > 0:
+						for c in self.selected_deck.selected:
+							c.marked = False
+						self.selected_deck.selected = []
+				elif self.actionDeck == "face up":
+					if not self.selected_deck.isEmpty():
+						for c in self.selected_deck.cards:
+							c.hidden = False
+				elif self.actionDeck == "face down":
+					if not self.selected_deck.isEmpty():
+						for c in self.selected_deck.cards:
+							c.hidden = True
+				elif self.actionDeck == "select all":
+					if not self.selected_deck.isEmpty():
+						for c in self.selected_deck.cards:
+							if c.marked == False:
+								c.marked = True
+								self.selected_deck.selected.append(c)
+				elif self.actionDeck == "unselect":
+					if not self.selected_deck.isEmpty():
+						for c in self.selected_deck.cards:
+							if c.marked == True:
+								c.marked = False
+							if self.selected_deck  is not None :
+								self.selected_deck.selected = []
+								self.selected_deck = None
+				self.actionDeck = None
+				self.state = Game.ACTION
+				self.changed = True
+				return
+
+			if(self.state == Game.AUCTION and self.selected_deck is not None):
+				nbCards = int(message.value[0])
+				if nbCards > 0 :
+					for c in self.selected_deck.selected :
+						c.marked = False
+					self.selected_deck.selected =  []
+					for i in range(0,nbCards):
+						self.selected_deck.selected.append(self.selected_deck.cards[i])
+						self.selected_deck.cards[i].marked = True
+					self.changed = True
+				self.state = Game.ACTION
+				
+				return
+
+
 			if(player.name in self.awaited and deck != None):
 				
 				if  self.selected_deck != None and  self.selected_target_deck != None and self.selected_deck != deck and self.selected_target_deck != deck:
@@ -95,42 +153,34 @@ class GameUTRC(Game):
 					self.changed = True
 					return
 				
-				if (deck.deckType== Deck.STOCK or deck.deckType == Deck.BOARD or deck.deckType== Deck.WASTE) :
-					if((self.selected_deck == None or self.selected_deck.deckType != Deck.PLAYER) and (deck.deckType== Deck.STOCK or deck.deckType == Deck.BOARD)) :
-						if(self.selected_deck == deck):
-							self.mode = (self.mode+1) % 2
-						else :
-							self.selected_deck = deck
-							self.selected_deck.showFront().marked = True
-						mode = "INSERT" if self.mode == 1 else "REPLACE"
-						self.sendMessage(Message(Message.DEBUG,0,"game","Mode : " + mode))
-
-					elif self.selected_deck != None:
-						self.selected_target_deck = deck
-						self.awaited.remove(player.name)
-					self.changed = True
 					
-				elif (deck.deckType == Deck.PLAYER and self.selected_deck == None) :
-					self.selected_deck = deck
-					card.marked = True
-					deck.selected.append(card)
-					self.changed = True
+				elif ((deck.deckType == Deck.PLAYER or deck.deckType== Deck.STOCK or deck.deckType == Deck.BOARD or deck.deckType== Deck.WASTE) and self.selected_deck == None) :
+					if card is not None :
+						self.selected_deck = deck
+						card.marked = True
+						deck.selected.append(card)
+						self.changed = True
 				
-				elif (deck.deckType == Deck.PLAYER and self.selected_deck == deck ) :
+				elif ((deck.deckType == Deck.PLAYER or deck.deckType== Deck.STOCK or deck.deckType == Deck.BOARD or deck.deckType== Deck.WASTE) and self.selected_deck == deck ) :
 					if (card.marked) :
-						card.marked = False
-						deck.selected.remove(card)
-						if (deck.selected == []):
-							self.selected_deck = None
+						if((not card.hidden and message.messageType != Deck.SORT) or (card.hidden and message.messageType == Deck.SORT)  ) :
+							card.marked = False
+							deck.selected.remove(card)
+							if (deck.selected == []):
+								self.selected_deck = None
+						else :
+							card.hidden = message.messageType == Deck.SORT
 					else :
 						card.marked = True
 						deck.selected.append(card)
 					self.changed = True
 
-				elif (deck.deckType== Deck.PLAYER and self.selected_deck != deck  and self.selected_deck != None ) :
+				elif ((deck.deckType == Deck.PLAYER or deck.deckType== Deck.STOCK or deck.deckType == Deck.BOARD or deck.deckType== Deck.WASTE)  and self.selected_deck != deck  and self.selected_deck != None ) :
 					deck.selected.append(card)
 					self.selected_target_deck = deck
 					self.awaited.remove(player.name)
+					if message.messageType == Deck.SORT:
+						self.mode = 1
 					self.changed = True
 
 
@@ -150,16 +200,16 @@ class GameUTRC(Game):
 		for l in interfaceLines :
 			if l.name not in ["deck_ut","stock_ut","waste_ut"] :
 				type = Deck.PLAYER
-				if l.name == "waste":
+				if l.name == "PLAYER":
 					type = Deck.WASTE
-				if l.name == "stock":
+				if l.name == "PLAYER":
 					type = Deck.STOCK
 				deck = Deck(l.name,type)
 				self.decks.append(deck)
 				deck.addBack(emptyCard())
 				self.interfacedDecks.append(InterfacedDeckDescriptor(deck,Deck.PLAYER))
 		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.deck,Deck.STOCK))
-		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.stock,Deck.STOCK))
+		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.stock,Deck.PLAYER))
 		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.waste,Deck.WASTE))
 
 		
