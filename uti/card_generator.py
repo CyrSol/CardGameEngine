@@ -71,6 +71,7 @@ class TemplateElement:
 class Template:
     name: str
     elements: List[TemplateElement] = field(default_factory=list)
+    perimeter: str = "all"
 
     def save_csv(self, path: str):
         with open(path, 'w', newline='', encoding='utf-8') as f:
@@ -123,6 +124,7 @@ class Project:
         with open(cfg_path, 'r', encoding='utf-8') as f:
             cfg = json.load(f)
         proj = Project(path=path, name=cfg.get('name', os.path.basename(path)), card_width=cfg.get('card_width', 120), card_height=cfg.get('card_height', 160))
+        template_perimeters = cfg.get('template_perimeters', {})
         # load templates
         templates_dir = os.path.join(path, 'templates')
         if os.path.isdir(templates_dir):
@@ -130,6 +132,7 @@ class Project:
                 if fname.lower().endswith('.csv'):
                     try:
                         tpl = Template.load_csv(os.path.join(templates_dir, fname))
+                        tpl.perimeter = template_perimeters.get(tpl.name, "all")
                         proj.templates[tpl.name] = tpl
                     except Exception:
                         # skip malformed templates
@@ -137,8 +140,15 @@ class Project:
         return proj
 
     def save(self):
+        template_perimeters = {name: tpl.perimeter for name, tpl in self.templates.items()}
+        config_data = {
+            'name': self.name,
+            'card_width': self.card_width,
+            'card_height': self.card_height,
+            'template_perimeters': template_perimeters
+        }
         with open(os.path.join(self.path, 'config.json'), 'w', encoding='utf-8') as f:
-            json.dump({'name': self.name, 'card_width': self.card_width, 'card_height': self.card_height}, f, indent=2)
+            json.dump(config_data, f, indent=2)
         # save templates
         templates_dir = os.path.join(self.path, 'templates')
         os.makedirs(templates_dir, exist_ok=True)
@@ -157,6 +167,23 @@ class Project:
         if not os.path.isdir(assets_dir):
             return []
         return [os.path.join(assets_dir, f) for f in os.listdir(assets_dir)]
+
+# ---------- Perimeter Logic ----------
+
+def match_perimeter(perimeter: str, row: Dict[str, str]) -> bool:
+    if perimeter == "all":
+        return True
+
+    parts = perimeter.split('=')
+    if len(parts) != 2:
+        return True # Invalid rule, default to True
+
+    key, value = parts[0].strip(), parts[1].strip()
+
+    if key in row:
+        return row[key] == value
+
+    return False
 
 # ---------- Editor App ----------
 
@@ -216,6 +243,13 @@ class EditorApp:
         ttk.Button(self.left_frame, text='New Template', command=self.new_template).pack(fill=tk.X, padx=6)
         ttk.Button(self.left_frame, text='Delete Template', command=self.delete_template).pack(fill=tk.X, padx=6)
         ttk.Button(self.left_frame, text='Import Template CSV', command=self.import_template_csv).pack(fill=tk.X, padx=6)
+
+        # Perimeter editing
+        ttk.Label(self.left_frame, text="Template Perimeter").pack(pady=(6,0))
+        self.template_perimeter_entry = ttk.Entry(self.left_frame)
+        self.template_perimeter_entry.pack(fill=tk.X, padx=6)
+        ttk.Button(self.left_frame, text='Apply Perimeter', command=self.apply_perimeter).pack(fill=tk.X, padx=6, pady=2)
+
         ttk.Separator(self.left_frame).pack(fill=tk.X, pady=6)
 
         # Assets
@@ -442,6 +476,18 @@ class EditorApp:
         self.push_undo()
         self.refresh_canvas()
         self.fill_properties_from_selected()
+        # update perimeter entry
+        if self.current_template:
+            self.template_perimeter_entry.delete(0, tk.END)
+            self.template_perimeter_entry.insert(0, self.current_template.perimeter)
+
+    def apply_perimeter(self):
+        if not self.current_template:
+            return
+        new_perimeter = self.template_perimeter_entry.get()
+        self.current_template.perimeter = new_perimeter
+        self.project.save() # save project to persist perimeter change
+        messagebox.showinfo('Perimeter Applied', f'Perimeter set to: {new_perimeter}')
 
     def duplicate_element(self):
         if not self.current_template or self.selected_element_index is None:
@@ -802,6 +848,8 @@ class EditorApp:
 
         # render each row
         for i, r in enumerate(rows, start=1):
+            if not match_perimeter(self.current_template.perimeter, r):
+                continue
             placeholders = {
                 'name': r.get('nom_carte') or r.get('name') or '',
                 'rank': r.get('rank', ''),
