@@ -222,7 +222,7 @@ class GameFactoryUTRC(GameFactory):
 
 class AIUTRCFactory():
 	def getAI(self,num):
-		return None
+		return AIInput(0,'AI_UTRC_Input')
 
 def record_unit_tests(general_params,aIFactory,loadCards=loadCards):
 	
@@ -232,6 +232,8 @@ def record_unit_tests(general_params,aIFactory,loadCards=loadCards):
 
 	
 	gameSceneFactoryList=[]
+	if(game_options != {}):
+		gameSceneFactoryList.append(GameMenuOptionsFactory("UTRC"))
 	gameSceneFactoryList.append(GameLogicFactory(GameManagerFactory(GameFactoryUTRC(general_params,game_params),aIFactory,loadCards)))
 	GameWindowTK.display(general_params,game_params,gameSceneFactoryList,SimpleTransitionManager(),game_options)
 

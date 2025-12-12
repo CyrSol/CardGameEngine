@@ -719,3 +719,28 @@ def savePut(filename, put):
 	file = open(filename,"a")
 	file.write(put+"\n")
 	file.close()
+
+def loadCardsScope(cards,scope):
+
+	cardsList = []
+	scopeList = scope.split(";")
+	cpt = int(scopeList[0])
+	namesControl = scopeList[1].split(',')
+	valuemin = int(scopeList[2])
+	valuemax = int(scopeList[3])
+	
+	for card in cards:
+		if namesControl == [] or nameInList(card.name, namesControl) :
+			if valuemin > valuemax or (int(card.rank) >= valuemin and int(card.rank) <= valuemax):
+				for  i in range(0,cpt,1):
+					cardsList.append(card)
+
+	print(len(cardsList))
+	return cardsList
+
+
+def nameInList(name,listStr):
+	for s in listStr:
+		if s in name:
+			return True
+	return False

@@ -518,14 +518,19 @@ class GameManagerFactory():
 		# Cards
 		cards  = self.loadCards(general_params["cards"])
 		cards_ref = loadCardsRef(cards)
+		cardsList = cards
 
-		reflexionTime = 10
+		if "cards_scope" in general_params:
+			cardsList = loadCardsScope(cards, general_params["cards_scope"])
+
+
+		reflexionTime = 5
 
 		# Interface
 		interfaceManager = InterfaceManager()
 		
 		# GameManager
-		gameManager = GameManager(game,interfaceManager,cards, cards_ref,eventManager,aiManager,reflexionTime)
+		gameManager = GameManager(game,interfaceManager,cardsList, cards_ref,eventManager,aiManager,reflexionTime)
 		
 		return gameManager
 
