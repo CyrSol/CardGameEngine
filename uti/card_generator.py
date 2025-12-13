@@ -396,6 +396,9 @@ class EditorApp:
         name = simpledialog.askstring('Template name', 'Template name')
         if not name:
             return
+        if name in self.project.templates:
+            messagebox.showwarning('Exists', f'Template with name {name} already exists')
+            return
         tpl = Template(name=name)
         self.project.templates[name] = tpl
         self.current_template = tpl
