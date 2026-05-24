@@ -34,6 +34,32 @@ from PIL import Image, ImageTk, ImageOps, ImageFont, ImageDraw
 from dataclasses import dataclass, asdict, field
 from typing import List, Optional, Dict
 
+# Utility: convert white (or near-white) pixels to transparent
+def white_to_transparent(img, tolerance: int = 0):
+    """Return a copy of `img` (Pillow Image) where white pixels become transparent.
+
+    Args:
+        img: PIL.Image instance.
+        tolerance: integer 0..255. Pixels with R,G,B >= 255 - tolerance are made transparent.
+
+    Returns:
+        A new PIL.Image in 'RGBA' mode with white made transparent.
+    """
+    if img.mode != 'RGBA':
+        img = img.convert('RGBA')
+    datas = list(img.getdata())
+    new_data = []
+    threshold = 255 - max(0, min(255, int(tolerance)))
+    for item in datas:
+        r, g, b, a = item
+        if r >= threshold and g >= threshold and b >= threshold:
+            new_data.append((255, 255, 255, 0))
+        else:
+            new_data.append((r, g, b, a))
+    out = Image.new('RGBA', img.size)
+    out.putdata(new_data)
+    return out
+
 # ---------- Data classes ----------
 
 @dataclass
@@ -231,13 +257,16 @@ class Project:
 
 def match_perimeter(perimeter: str, row: Dict[str, str]) -> bool:
     if perimeter == "all":
-        return True
+        return row["suit"] != "back"
 
     parts = perimeter.split(';')
     if len(parts) != 3:
         return False 
 
     key, comparison ,value = parts[0].strip(), parts[1].strip(), parts[2].strip()
+
+    if row["suit"] == "back" and "back" not in value:
+        return False
     #print(f"Matching perimeter: key={key}, comparison={comparison}, value={value} against row {row}")
     if key in row:
         #print(f"Perimeter key '{key}' matches row key")
@@ -253,14 +282,13 @@ def match_perimeter(perimeter: str, row: Dict[str, str]) -> bool:
             return row[key] <= value
         if comparison == "!=":
             return row[key] != value
+        values = value.split(',')
         if comparison == "not in":
-            print(f"Checking if {row[key]} not in {value}")
-            return row[key] not in value
+            return row[key] not in values
         if comparison == "in":
-            return row[key] in value
+            return row[key] in values
         if comparison == "between":
-            values = value.split(',')
-            return values[0] <= row[key] <= values[1]
+            return int(values[0]) <= int(row[key]) <= int(values[1])
 
 # ---------- Editor App ----------
 
@@ -774,11 +802,11 @@ class EditorApp:
             # deselect
             self.selected_element_index = None
             self.fill_properties_from_selected()
-        # update x and y fields with click coordinates
-        self.prop_x.delete(0, tk.END)
-        self.prop_x.insert(0, str(x))
-        self.prop_y.delete(0, tk.END)
-        self.prop_y.insert(0, str(y))
+            # update x and y fields with click coordinates only when no element is selected
+            self.prop_x.delete(0, tk.END)
+            self.prop_x.insert(0, str(x))
+            self.prop_y.delete(0, tk.END)
+            self.prop_y.insert(0, str(y))
         self.refresh_canvas()
 
     def on_canvas_drag(self, event):
@@ -1202,6 +1230,10 @@ class EditorApp:
                 key = imgpath + f"_{el.w}_{el.h}"
                 try:
                     pil = Image.open(imgpath)
+                    try:
+                        pil = white_to_transparent(pil)
+                    except Exception:
+                        pass
                 except Exception:
                     pil = None
                 if pil is not None:
@@ -1265,7 +1297,11 @@ class EditorApp:
                     imgpath = self._resolve_asset_path(el.value)
                 if imgpath and os.path.exists(imgpath):
                     try:
-                        im = Image.open(imgpath).convert('RGBA')
+                        im = Image.open(imgpath)
+                        try:
+                            im = white_to_transparent(im)
+                        except Exception:
+                            im = im.convert('RGBA')
                         if el.w and el.h:
                             im = ImageOps.contain(im, (el.w, el.h))
                         pil.paste(im, (el.x, el.y), im)
@@ -1370,7 +1406,7 @@ class EditorApp:
         rows = self.open_csv()
 
         # render each row
-        out_folder = os.path.join(self.project.path, 'playing_cards')
+        out_folder = os.path.join('playing_cards',self.project.name)
         os.makedirs(out_folder, exist_ok=True)
         csv_path = os.path.join(self.project.path, self.project.name+'_cards_dict.csv')
         with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
@@ -1388,7 +1424,7 @@ class EditorApp:
                 for name, tpl in self.project.templates.items():
                     if match_perimeter(tpl.perimeter, r):
                         pil = self._render_template_to_image(tpl, placeholders, pil)
-                outname = f"{i}.png"
+                outname = f"{placeholders.get('name')}.png"
                 outpath = os.path.join(out_folder, outname)
                 try:
                     pil.save(outpath)
@@ -1398,7 +1434,7 @@ class EditorApp:
                     except Exception as e:
                         print('Failed to save', outpath, e)
                         outpath = ''
-                relative_path = os.path.join('playing_cards', outname)
+                relative_path = os.path.join('playing_cards',self.project.name, outname)
                 writer.writerow([placeholders.get('name'), relative_path])
         messagebox.showinfo('Generated', f'Generated {len(rows)} cards into {out_folder} and wrote {csv_path}')
 

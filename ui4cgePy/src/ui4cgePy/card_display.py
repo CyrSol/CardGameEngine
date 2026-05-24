@@ -118,9 +118,13 @@ class AIFactoryDISP():
 	def getAI(self,num):
 		return AI("rien",0) if num != 0 else None
 
-def debug_display_cards(general_params,loadCards):	
+def debug_display_cards(general_params,loadCards,cards=None,cards_dict=None):	
 	game_params=loadParams(general_params["game_params"])
 	general_params["fic"] = "DISP"
+	if cards is not None:
+		general_params["cards"] = cards
+	if cards_dict is not None:
+		general_params["cards_dict"] = cards_dict
 	game_params["deck"] = "common"
 	game_params["nb_players"] = 1
 

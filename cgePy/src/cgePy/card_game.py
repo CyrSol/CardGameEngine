@@ -177,6 +177,7 @@ class Player(Deck) :
 		self.messages=[]
 		self.round_won=0
 		self.record = False
+		self.record_state = False
 		self.nb_picked = 0
 		self.cardsPickable = []
 	
@@ -263,7 +264,7 @@ class AIInput(AI):
 					output.update({"deck_" + str(k) : { "state" : states[k], "expected_state" : expected[k], "result" : result}})
 					test_result = test_result and result
 				output.update({"test_result" : test_result})
-				self.output.update({"test"+str(self.counter+1) : output})
+				self.output.update({"test"+str(self.counter) : output})
 					
 				if not result :
 					game.sendMessage(Message(Message.DEBUG,0,"game","test"+str(self.counter) + " en erreur"))
@@ -272,9 +273,11 @@ class AIInput(AI):
 		
 		if(len(self.input) > 0) :
 				item = self.input.pop(0).split(",")
+				game.debug = str(item)
 				self.last_move = item
 				self.counter = self.counter + 1
 				message = None
+				print(item)
 				if(item[4] == "deck"):
 						message = MessageDeck(Message.GAME,int(item[0]),player.name,item[1],int(item[2]))
 				if(item[4] == "value"):
@@ -316,7 +319,6 @@ class Board(object) :
 
 	def fillStock(self):
 		self.stock.cards = []
-		#TODO => cardowned
 		for c in self.stock_init.cards:
 			self.stock.cards.append(copy.deepcopy(c))
 
@@ -356,6 +358,7 @@ class Board(object) :
 		self.deck.empty()
 		for i in range(0,nb):
 			self.deck.addBack(emptyCard())
+		print("Deck filled with " + str(len(self.deck.cards)) + " empty cards")
 	
 	
 class Message():
@@ -576,6 +579,9 @@ class Game(object) :
 			if player.record:
 				player.recordOutput(self,self.general_params["output_file"])
 				player.recordInput(message,self.general_params["input_file"])
+			if player.record_state:
+				player.recordOutput(self,self.general_params["output_file"])
+				player.record_state = False
 		if self.blocked:
 			return None
 		else :
