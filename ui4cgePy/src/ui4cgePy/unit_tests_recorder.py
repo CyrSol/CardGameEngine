@@ -1,7 +1,4 @@
-import pygame
-import sys
 import os
-import datetime
 
 from cgePy.card_game import *
 from cgePy.card_manager import GameFactory
@@ -87,7 +84,7 @@ class GameUTRC(Game):
 					list_choice = []
 					for i in range (0,self.selected_deck.getNbCards()+1):
 						list_choice.append(i)
-					options_dic = addOption({},"action_choice","integer",list_choice,"chose the number of cards to select")
+					options_dic = addOption({},"action_choice","integer",list_choice,"choose the number of cards to select")
 					dic = dicOptionsMaker("UTRC",options_dic)
 					self.addOutputMessage(MessageValue( Message.CHOICE,Deck.CHOICE, self.players[0].name, "output", dic))
 				self.state = Game.AUCTION
@@ -208,8 +205,8 @@ class GameUTRC(Game):
 				self.decks.append(deck)
 				deck.addBack(emptyCard())
 				self.interfacedDecks.append(InterfacedDeckDescriptor(deck,Deck.PLAYER))
-		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.deck,Deck.STOCK))
-		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.stock,Deck.PLAYER))
+		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.deck,Deck.PLAYER))
+		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.stock,Deck.STOCK))
 		self.interfacedDecks.append(InterfacedDeckDescriptor(self.board.waste,Deck.WASTE))
 
 		
@@ -222,16 +219,18 @@ class GameFactoryUTRC(GameFactory):
 
 class AIUTRCFactory():
 	def getAI(self,num):
-		return None
+		return AIInput(0,'AI_UTRC_Input')
 
 def record_unit_tests(general_params,aIFactory,loadCards=loadCards):
 	
 	game_params=loadParams(general_params["game_params"])
-	game_options=loadParams(general_params["game_options"])
+	game_options= general_params["game_options"] if "game_options" in general_params else ""
 
 
 	
 	gameSceneFactoryList=[]
+	if(game_options != ""):
+		gameSceneFactoryList.append(GameMenuOptionsFactory("UTRC"))
 	gameSceneFactoryList.append(GameLogicFactory(GameManagerFactory(GameFactoryUTRC(general_params,game_params),aIFactory,loadCards)))
 	GameWindowTK.display(general_params,game_params,gameSceneFactoryList,SimpleTransitionManager(),game_options)
 

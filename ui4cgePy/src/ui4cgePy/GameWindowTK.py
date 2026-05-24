@@ -10,7 +10,8 @@ class GameWindowTK() :
 		formTk = FormTk(game_params)
 		formTk.initialisation(general_params["title"],general_params["screen_width"],general_params["screen_height"]+10,EventManagerTKform())
 		screen = pygame.display.set_mode([general_params["screen_width"],general_params["screen_height"]])
-		card_dict = loadCardsDict(general_params["cards_dict"],general_params["back_name"])
+		#back_name = None if "back_name" not in general_params else general_params["back_name"]
+		card_dict = loadCardsDict(general_params["cards_dict"])
 		pygame.init()
 		pygame.font.init()
 		#uiManager = uiManagerFactory.getUIManager(general_params["screen_width"],general_params["screen_height"])

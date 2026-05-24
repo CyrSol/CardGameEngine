@@ -1,0 +1,22 @@
+<game command>
+N => New game
+D => Enable/Disable debug mode
+F => Debug forward step 
+B => Debug back step
+R => Retry
+S => Save parameters
+A => Output test (debug purpose)
+E => Enable/Disable recording
+Z => Enable output state recording (once)
+X => Block the game
+L => Display the rules information
+K => Screenshot (need a screenshot folder)
+M => Display the commands information
+
+<Unit tests maker>
+Select a deck
+- key G
+=> Select an action to perform on the deck
+
+- key H
+=> Select the number of cards you want fifo mode

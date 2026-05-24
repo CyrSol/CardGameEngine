@@ -30,7 +30,7 @@ class DeckInterface(object):
 	VERTICAL=10
 	HORIZONTAL=11
 	
-	def __init__(self,x,y,w,h,int1,int2,name,type,orientation, deckDisplayManager,hollow,nbmax):
+	def __init__(self,x,y,w,h,int1,int2,name,type,orientation, deckDisplayManager,hollow,nbmax,back_name):
 		self.cardInterfaces = []
 		self.deckInterfaceType = type
 		self.x=x
@@ -44,9 +44,11 @@ class DeckInterface(object):
 		self.deckDisplayManager = deckDisplayManager 
 		self.hollow = hollow
 		self.nbmax = nbmax
+		self.back_name = back_name
 	
 	def interfaceCards(self):
 		cardList = self.deckDisplayManager.getList(self)
+		#print("deck " + self.name + " : " + str(len(cardList)) + " cards to interface")
 		self.cardInterfaces = []
 		for i in range(0,len(cardList)):
 			x=self.x
@@ -61,6 +63,7 @@ class DeckInterface(object):
 				x=x+(b*self.width/self.int1)+b*self.int2
 			else:
 				y=y+(b*self.height/self.int1)+b*self.int2
+			#print("card " + str(i) + " : " + str(x) + ":" + str(y))
 			
 			name=""
 			marked=False
@@ -69,12 +72,12 @@ class DeckInterface(object):
 				marked = cardList[i].marked
 				handle = cardList[i].handle
 				if(cardList[i].hidden):
-					name="back"
+					name=self.back_name
 				else: 
 					name=cardList[i].name
 			self.cardInterfaces.append(CardInterface(x,y,self.width,self.height,name,i,marked,handle))
 			#TODO inverser la liste pour l'affichage
-		self.cardInterfaces.reverse()
+		#self.cardInterfaces.reverse()
 	
 class DeckDisplayManager(object):
 	def __init__(self,deck):
@@ -86,7 +89,7 @@ class DeckDisplayManager(object):
 		elif deckInterface.deckInterfaceType == Deck.SELECTED:
 			return self.deck.getSelected()
 		else:
-			return self.deck.cards[0:deckInterface.nbmax] if len(self.deck.cards) >= 1 else [None]
+			return self.deck.cards if len(self.deck.cards) >= 1 else [None]
 		
 class InterfaceManager(object):
 	def __init__(self):
@@ -141,9 +144,10 @@ def loadCards(file_name):
 		val = line.rstrip('\n').split(",")
 		if len(val) ==  5 and val[0][0] != "#":
 			name = val[0]
-			#(name+" -> "+nameFic)
-			card = Card(name,val[1],val[2],int(val[3]),val[4])
-			cards.append(card)
+			if val[2] != "back":
+				#(name+" -> "+nameFic)
+				card = Card(name,val[1],val[2],int(val[3]),val[4])
+				cards.append(card)
 			
 	
 
@@ -156,7 +160,7 @@ def loadCardsRef(cards):
 
 	return cards_ref
 
-def loadCardsDict(file_name,back_name):
+def loadCardsDict(file_name):
 	fic = open(file_name,'r')
 	card_dict = { }
 	for line in fic :
@@ -167,11 +171,6 @@ def loadCardsDict(file_name,back_name):
 			#print(name+" -> "+nameFic)
 			img = pygame.image.load(os.path.join(os.getcwd(),nameFic.strip())).convert()
 			card_dict[name] = img
-	
-	
-	imagename = os.path.join(os.getcwd(),back_name)
-	img = pygame.image.load(imagename).convert()
-	card_dict["back"] = img
 
 	return  card_dict
 
@@ -222,10 +221,12 @@ class GameManager(object):
 	OUTPUT_TEST = 10
 	RECORD = 11
 	BLOCK = 12
+	RECORD_STATE = 13
 	PYGAME_GAME_PARAM=25
 	PYGAME_INPUT=26
 	RULES=27
 	SCREENSHOT=28
+	INFO=29
 
 	def __init__(self,game,interfaceManager,cardList,cards_ref,eventManager,aiManager,reflexionTime):
 		self.game=game
@@ -275,7 +276,7 @@ class GameManager(object):
 			ret, dic = self.event(events)
 			#print("retour :" + str(ret))
 
-			if ret == GameManager.STEP_BACK or ret == GameManager.NEW_GAME or ret == GameManager.RETRY or ret == GameManager.SAVE_PARAMS or ret == GameManager.RECORD or ret == GameManager.BLOCK or ret == GameManager.SCREENSHOT :
+			if ret == GameManager.STEP_BACK or ret == GameManager.NEW_GAME or ret == GameManager.RETRY or ret == GameManager.SAVE_PARAMS or ret == GameManager.RECORD or ret == GameManager.RECORD_STATE or ret == GameManager.BLOCK or ret == GameManager.SCREENSHOT :
 				return ret
 
 			if ret == GameManager.DEBUG_MODE:
@@ -306,6 +307,10 @@ class GameManager(object):
 				if("fic_rules") in self.game.general_params :
 					dic = {"rules":"yes","path":self.game.general_params["fic_rules"],"title":"Règles"}
 					self.game.addOutputMessage(MessageValue( Message.CHOICE,Deck.CHOICE, self.game.players[0].name, "output", dic))
+			
+			if (ret == GameManager.INFO):
+				dic = {"info":"yes","path":"info.txt","module":"cgePy.resources","title":"Info"}
+				self.game.addOutputMessage(MessageValue( Message.CHOICE,Deck.CHOICE, self.game.players[0].name, "output", dic))
 
 			if (not self.debug_mode or ret == GameManager.STEP_UP):
 				if (self.debug_mode):
@@ -379,6 +384,8 @@ class EventManager(object):
 				elif event.key == pygame.K_x : ret = GameManager.BLOCK
 				elif event.key == pygame.K_l : ret = GameManager.RULES
 				elif event.key == pygame.K_k : ret = GameManager.SCREENSHOT
+				elif event.key == pygame.K_m : ret = GameManager.INFO
+				elif event.key == pygame.K_z : ret = GameManager.RECORD_STATE
 				else:
 					ret = GameManager.GAME_INPUT
 					dic = {"value":["button_"+safe_chr(event.key)]}
@@ -518,14 +525,28 @@ class GameManagerFactory():
 		# Cards
 		cards  = self.loadCards(general_params["cards"])
 		cards_ref = loadCardsRef(cards)
+		cardsList = cards
 
-		reflexionTime = 10
+		if "cards_filter" in general_params:
+			cardsList = loadCardsScope(cards, general_params["cards_filter"])
+
+		if "cards_scope" in general_params:
+			cards_scope = loadParams(general_params["cards_scope"])
+			cards_by_name = {card.name: card for card in cardsList}
+			cardsListScoped = []
+			for key, value in cards_scope.items():
+				c = cards_by_name.get(key)
+				for i in range(0,value):
+					cardsListScoped.append(copy.deepcopy(c))
+			cardsList = cardsListScoped
+
+		reflexionTime = 5
 
 		# Interface
 		interfaceManager = InterfaceManager()
 		
 		# GameManager
-		gameManager = GameManager(game,interfaceManager,cards, cards_ref,eventManager,aiManager,reflexionTime)
+		gameManager = GameManager(game,interfaceManager,cardsList, cards_ref,eventManager,aiManager,reflexionTime)
 		
 		return gameManager
 
@@ -603,8 +624,8 @@ class InterfaceGameGenericManagerFactory(InterfaceGameManagerFactory):
 	def getInterfaceGameManager(self,game):
 		interfaceGameManager = InterfaceGameManager()
 		for i in range(0,len(self.interfaces)):
-			#print(self.interfaces[i].name + ":" + game.interfacedDecks[i].name)
-			deckInterface = DeckInterface(self.interfaces[i].x,self.interfaces[i].y,self.interfaces[i].w,self.interfaces[i].h,self.interfaces[i].int1,self.interfaces[i].int2,game.interfacedDecks[i].deck.name,game.interfacedDecks[i].deckType,self.interfaces[i].orientation,DeckDisplayManager(game.interfacedDecks[i].deck),self.interfaces[i].hollow,self.interfaces[i].nbmax)
+			print(self.interfaces[i].name + ":" + game.interfacedDecks[i].deck.name)
+			deckInterface = DeckInterface(self.interfaces[i].x,self.interfaces[i].y,self.interfaces[i].w,self.interfaces[i].h,self.interfaces[i].int1,self.interfaces[i].int2,game.interfacedDecks[i].deck.name,game.interfacedDecks[i].deckType,self.interfaces[i].orientation,DeckDisplayManager(game.interfacedDecks[i].deck),self.interfaces[i].hollow,self.interfaces[i].nbmax,game.general_params["back_name"] if "back_name" in game.general_params else None)
 			interfaceGameManager.addDeckInterface(deckInterface)
 
 		
@@ -699,6 +720,10 @@ class GameLogic(GameScene):
 		if (ret == GameManager.RECORD):
 			self.gameManager.game.players[0].record = not self.gameManager.game.players[0].record 
 			print("record" + str(self.gameManager.game.players[0].record ))
+		
+		if (ret == GameManager.RECORD_STATE):
+			self.gameManager.game.players[0].record_state = True
+			print("record_state" + str(self.gameManager.game.players[0].record_state))
 
 		if (ret == GameManager.BLOCK):
 			self.gameManager.game.blocked = not self.gameManager.game.blocked 
@@ -758,8 +783,14 @@ class GameLogicFactory:
 			cpl = str(game_params["nb_players"])
 		ccfgPath = os.path.join(general_params["fic_config_folder"] + general_params["fic"]+cpl+general_params["extension_fic_config"])
 		fic = open(ccfgPath,'r')
-		interfaceLines =interfaceLineFromFile(fic)
+		interfaceLines = interfaceLineFromFile(fic)
 		fic.close()
+		if "fic_utm" in general_params :
+			folder = general_params["fic_utm_config_folder"] if "fic_utm_config_folder" in general_params else general_params["fic_config_folder"] 
+			ccfgPath = os.path.join(folder + general_params["fic_utm"]+cpl+general_params["extension_fic_config"])
+			fic = open(ccfgPath,'r')
+			interfaceLines.extend(interfaceLineFromFile(fic))
+			fic.close()
 
 		ccfgPath = os.path.join(general_params["fic_interface_folder"] + general_params["fic"]+cpl+general_params["extension_fic_interface"])
 		fic = open(ccfgPath,'r')

@@ -1,8 +1,10 @@
 import tkinter as tk
 import pygame
 import os, platform
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox
 import re
+
+from importlib import resources
 
 PYGAME_GAME_PARAM= 25
 PYGAME_INPUT = 26
@@ -75,7 +77,18 @@ class FormTk(object):
           for dic in self.gameLoop.getOutputMessages():
            #print(dic)
            if "rules" in dic :
-                self.show_file_popup(dic["path"],dic["title"])
+                with open(dic["path"], "r", encoding="utf-8") as f:
+                    self.show_file_popup(f,dic["title"])
+           elif "info" in dic :
+                fichiers_ressource = resources.files(dic["module"]) / dic["path"]
+
+                # Pour lire le contenu textuel directement
+                contenu = fichiers_ressource.read_text(encoding="utf-8")
+                print(contenu)
+
+                # Ou si vous devez utiliser un gestionnaire de contexte (open)
+                with fichiers_ressource.open("r", encoding="utf-8") as f:
+                    self.show_file_popup(f,dic["title"])
            else :
             ret, key, typeParam = self.popup(dic)
            #print(ret)
@@ -217,25 +230,24 @@ class FormTk(object):
         return listbox
 
 
-    def show_file_popup(self, filepath, title="Contenu du fichier"):
+    def show_file_popup(self, f, title="Contenu du fichier"):
         
-        with open(filepath, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        lines = f.readlines()
 
         # Analyse du fichier pour découper selon les balises seules sur une ligne
         sections = []
         current_tag = None
         current_content = []
 
-        tag_pattern = re.compile(r"^<([a-zA-Z0-9_]+)>\s*$")  # correspond à <balise> seule sur une ligne
+        tag_pattern = re.compile(r"^<.*>$")  # correspond à <balise> seule sur une ligne
 
         for line in lines:
-            match = tag_pattern.match(line.strip())
+            match = tag_pattern.search(line.strip())
             if match:
                 if current_tag:
                     sections.append((current_tag, "".join(current_content).strip()))
                     current_content = []
-                current_tag = match.group(1)
+                current_tag = match.group(0)
             else:
                 current_content.append(line)
 
@@ -268,8 +280,9 @@ class FormTk(object):
 
         # Ajout des onglets avec Text + Scrollbars
         for tag, content in sections:
+            text = tag.replace("<", "").replace(">", "")
             frame = ttk.Frame(notebook)
-            notebook.add(frame, text=tag)
+            notebook.add(frame, text=text)
 
             # Création d'une frame pour gérer Text + Scrollbars
             text_frame = ttk.Frame(frame)
