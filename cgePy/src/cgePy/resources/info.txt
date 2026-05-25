@@ -12,6 +12,8 @@ X => Block the game
 L => Display the rules information
 K => Screenshot (need a screenshot folder)
 M => Display the commands information
+Down => current_score - 1
+Down => current_score + 1
 
 <Unit tests maker>
 Select a deck

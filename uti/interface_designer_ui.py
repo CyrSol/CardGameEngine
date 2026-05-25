@@ -176,6 +176,10 @@ def load_file_uie(file_name):
    #file_name = "config/"+file_name
    file_absolute_name= os.path.join(basePath,file_name)
    print(file_absolute_name)
+   if not os.path.exists(file_absolute_name):
+      os.makedirs(os.path.dirname(file_absolute_name), exist_ok=True)
+      open(file_absolute_name, 'w').close()
+      return []
    fic = open(file_absolute_name,'r')
    decks = []
    for line in fic.readlines():
@@ -185,7 +189,16 @@ def load_file_uie(file_name):
    fic.close
    return decks
 
-general_params = loadParams("config/general_params.json")
+config_folder = None
+if len(sys.argv) > 1:
+    config_folder = sys.argv[1]
+
+if config_folder:
+    general_params_file = os.path.join(config_folder, "config", "general_params.json")
+else:
+    general_params_file = os.path.join("config", "general_params.json")
+
+general_params = loadParams(general_params_file)
 game_params = loadParams(general_params["game_params"])
 pygame.init()
 pygame.key.set_repeat(300, 30)
@@ -270,6 +283,7 @@ embed.pack()
 
 pygame.key.set_repeat(300, 30)
 pygame.display.init()
+
 
 nbPlayersText = ""
 if general_params["multi_fic_config"]:
@@ -386,8 +400,8 @@ def mainloop():
             save_file(general_params["fic_config_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_config"], deck_liste)
         if(b_load):
             b_load = False
-            deck_liste = load_file(general_params["fic_interface_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_config"])
-            uie_liste = load_file_uie(general_params["fic_config_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_interface"])
+            deck_liste = load_file(general_params["fic_config_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_config"])
+            uie_liste = load_file_uie(general_params["fic_interface_folder"] + fileName.get()+nbPlayersText+general_params["extension_fic_interface"])
             selected_uie = None
             change = True
         if(moved and selected_uie is not None):

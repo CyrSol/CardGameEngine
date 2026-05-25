@@ -222,6 +222,8 @@ class GameManager(object):
 	RECORD = 11
 	BLOCK = 12
 	RECORD_STATE = 13
+	DOWN = 14
+	UP = 15
 	PYGAME_GAME_PARAM=25
 	PYGAME_INPUT=26
 	RULES=27
@@ -276,7 +278,7 @@ class GameManager(object):
 			ret, dic = self.event(events)
 			#print("retour :" + str(ret))
 
-			if ret == GameManager.STEP_BACK or ret == GameManager.NEW_GAME or ret == GameManager.RETRY or ret == GameManager.SAVE_PARAMS or ret == GameManager.RECORD or ret == GameManager.RECORD_STATE or ret == GameManager.BLOCK or ret == GameManager.SCREENSHOT :
+			if ret == GameManager.STEP_BACK or ret == GameManager.NEW_GAME or ret == GameManager.RETRY or ret == GameManager.SAVE_PARAMS or ret == GameManager.RECORD or ret == GameManager.RECORD_STATE or ret == GameManager.BLOCK or ret == GameManager.SCREENSHOT or ret == GameManager.DOWN or ret == GameManager.UP:
 				return ret
 
 			if ret == GameManager.DEBUG_MODE:
@@ -386,6 +388,8 @@ class EventManager(object):
 				elif event.key == pygame.K_k : ret = GameManager.SCREENSHOT
 				elif event.key == pygame.K_m : ret = GameManager.INFO
 				elif event.key == pygame.K_z : ret = GameManager.RECORD_STATE
+				elif event.key == pygame.K_DOWN : ret = GameManager.DOWN
+				elif event.key == pygame.K_UP : ret = GameManager.UP
 				else:
 					ret = GameManager.GAME_INPUT
 					dic = {"value":["button_"+safe_chr(event.key)]}
@@ -471,6 +475,7 @@ class UIManager(object):
 
 		pygame.draw.rect(screen,WHITE,[0,self.height-15,self.width,15])
 		
+		font = pygame.font.SysFont("arial",15)
 		text = font.render(uiVars["info"],True,BLACK)
 		screen.blit(text,[0,self.height-15])
 		text = font.render("| " + uiVars["debug"],True,BLACK)
@@ -528,7 +533,7 @@ class GameManagerFactory():
 		cardsList = cards
 
 		if "cards_filter" in general_params:
-			cardsList = loadCardsScope(cards, general_params["cards_filter"])
+			cardsList = loadCardsFilter(cards, general_params["cards_filter"])
 
 		if "cards_scope" in general_params:
 			cards_scope = loadParams(general_params["cards_scope"])
@@ -724,6 +729,12 @@ class GameLogic(GameScene):
 		if (ret == GameManager.RECORD_STATE):
 			self.gameManager.game.players[0].record_state = True
 			print("record_state" + str(self.gameManager.game.players[0].record_state))
+
+		if (ret == GameManager.DOWN):
+			self.gameManager.game.players[0].current_score = self.gameManager.game.players[0].current_score-1
+
+		if (ret == GameManager.UP):
+			self.gameManager.game.players[0].current_score = self.gameManager.game.players[0].current_score+1
 
 		if (ret == GameManager.BLOCK):
 			self.gameManager.game.blocked = not self.gameManager.game.blocked 

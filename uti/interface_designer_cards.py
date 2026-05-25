@@ -1,4 +1,5 @@
 import os
+import sys
 import copy
 import pygame
 import tkinter as tk
@@ -125,7 +126,16 @@ def load_file(file_name):
     return decks
 
 # --- Initialisation ---
-general_params = loadParams("config/general_params.json")
+config_folder = None
+if len(sys.argv) > 1:
+    config_folder = sys.argv[1]
+
+if config_folder:
+    general_params_file = os.path.join(config_folder, "config", "general_params.json")
+else:
+    general_params_file = os.path.join("config", "general_params.json")
+
+general_params = loadParams(general_params_file)
 pygame.init()
 pygame.key.set_repeat(300, 30)
 width = general_params["screen_width"]
